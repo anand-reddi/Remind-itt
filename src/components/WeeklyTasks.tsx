@@ -1,16 +1,30 @@
 
-import React from 'react';
-import { format, addDays, startOfWeek } from 'date-fns';
+import React, { useState } from 'react';
+import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
 import { Task, useTasks } from '@/contexts/TaskContext';
 import { TaskCard } from '@/components/TaskCard';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function WeeklyTasks() {
   const { tasks } = useTasks();
-  const today = new Date();
-  const startDay = startOfWeek(today);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Functions to navigate between weeks
+  const goToPreviousWeek = () => {
+    setCurrentDate(prevDate => subWeeks(prevDate, 1));
+  };
+
+  const goToNextWeek = () => {
+    setCurrentDate(prevDate => addWeeks(prevDate, 1));
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+  
+  // Get start of the selected week
+  const startDay = startOfWeek(currentDate);
   
   // Generate array of days for the current week
   const weekDays = Array.from({ length: 7 }, (_, i) => ({
@@ -36,17 +50,20 @@ export function WeeklyTasks() {
           <CalendarDays className="mr-2 h-5 w-5" />
           <h2 className="text-xl font-bold">Weekly View</h2>
         </div>
-        <Link to="/add">
-          <Button className="gap-1">
-            <Plus className="h-4 w-4" />
-            <span>Add Reminder</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-        </Link>
+          <Button variant="outline" onClick={goToToday}>Today</Button>
+          <Button variant="outline" size="icon" onClick={goToNextWeek}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       
       <div className="grid grid-cols-7 gap-4 mb-6">
         {weekDays.map((day, index) => {
-          const isToday = format(today, 'yyyy-MM-dd') === day.formattedDate;
+          const isToday = isSameDay(new Date(), day.date);
           return (
             <div key={index} className="text-center">
               <div className="text-sm text-muted-foreground">{day.day}</div>

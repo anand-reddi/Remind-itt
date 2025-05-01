@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { format, getDaysInMonth, startOfMonth, getDay, addDays, isToday, isSameDay } from 'date-fns';
 import { Task, useTasks } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MonthlyCalendar() {
@@ -70,12 +69,6 @@ export function MonthlyCalendar() {
           <Button variant="outline" size="icon" onClick={goToNextMonth}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Link to="/add">
-            <Button className="gap-1">
-              <Plus className="h-4 w-4" />
-              <span>Add Reminder</span>
-            </Button>
-          </Link>
         </div>
       </div>
       
@@ -116,10 +109,7 @@ export function MonthlyCalendar() {
                               key={task.id}
                               className={cn(
                                 "text-xs truncate rounded px-2 py-1",
-                                task.category === 'Work' && "bg-task-work/10 text-task-work",
-                                task.category === 'Personal' && "bg-task-personal/10 text-task-personal",
-                                task.category === 'Shopping' && "bg-task-shopping/10 text-task-shopping",
-                                task.category === 'Health' && "bg-task-health/10 text-task-health",
+                                "bg-primary/10 text-primary",
                                 task.completed && "opacity-50"
                               )}
                             >

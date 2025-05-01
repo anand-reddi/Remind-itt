@@ -64,10 +64,10 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				task: {
-					work: '#4F46E5',
-					personal: '#10B981',
-					shopping: '#F59E0B',
-					health: '#EC4899',
+					work: '#000000',
+					personal: '#000000',
+					shopping: '#000000',
+					health: '#000000',
 				}
 			},
 			borderRadius: {
