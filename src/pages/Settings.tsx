@@ -1,5 +1,6 @@
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
+  const { notificationsEnabled, toggleNotifications } = useNotifications();
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -41,7 +43,11 @@ const Settings = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="push-notifications">Push Notifications</Label>
-                <Switch id="push-notifications" defaultChecked />
+                <Switch 
+                  id="push-notifications" 
+                  checked={notificationsEnabled}
+                  onCheckedChange={toggleNotifications}
+                />
               </div>
               
               <div className="flex items-center justify-between">

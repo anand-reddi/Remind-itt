@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DailyTasks } from './DailyTasks';
 import { useQuote } from '@/contexts/QuoteContext';
 import { useTasks } from '@/contexts/TaskContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
@@ -10,16 +11,27 @@ import { useNavigate } from 'react-router-dom';
 export function Dashboard() {
   const { quote } = useQuote();
   const { getTodaysTasks } = useTasks();
+  const { showNotification } = useNotifications();
   const [showAiSuggestion, setShowAiSuggestion] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     // Check if there are too many tasks today (in a real app, this would be more sophisticated)
     const todaysTasks = getTodaysTasks();
-    if (todaysTasks.filter(t => !t.completed).length > 5) {
+    const incompleteTasks = todaysTasks.filter(t => !t.completed);
+    
+    if (incompleteTasks.length > 5) {
       setShowAiSuggestion(true);
     }
-  }, [getTodaysTasks]);
+    
+    // Show daily summary notification
+    if (incompleteTasks.length > 0) {
+      showNotification(
+        "Daily Task Summary", 
+        `You have ${incompleteTasks.length} task${incompleteTasks.length !== 1 ? 's' : ''} scheduled for today.`
+      );
+    }
+  }, [getTodaysTasks, showNotification]);
 
   const handleRescheduleSuggestion = () => {
     // In a real implementation, this would open a dialog to help reschedule tasks
