@@ -1,12 +1,12 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useTasks } from './TaskContext';
+import { useTasks, Task, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
 
 interface NotificationContextType {
   notificationsEnabled: boolean;
   requestNotificationPermission: () => Promise<boolean>;
-  showNotification: (title: string, body: string) => void;
+  showNotification: (title: string, body: string, priority?: TaskPriority) => void;
   toggleNotifications: () => void;
 }
 
@@ -63,15 +63,55 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const showNotification = (title: string, body: string) => {
+  const getNotificationOptions = (priority?: TaskPriority) => {
+    const defaultOptions = {
+      icon: '/favicon.ico',
+      vibrate: [100, 50, 100],
+      badge: '/favicon.ico',
+      data: {
+        url: window.location.origin
+      }
+    };
+
+    if (!priority) return defaultOptions;
+
+    switch (priority) {
+      case 'High':
+        return {
+          ...defaultOptions,
+          vibrate: [200, 100, 200, 100, 200],
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: 'high-priority',
+          requireInteraction: true,
+        };
+      case 'Medium':
+        return {
+          ...defaultOptions,
+          vibrate: [100, 50, 100],
+          tag: 'medium-priority',
+        };
+      case 'Low':
+        return {
+          ...defaultOptions,
+          vibrate: [50],
+          tag: 'low-priority',
+        };
+      default:
+        return defaultOptions;
+    }
+  };
+
+  const showNotification = (title: string, body: string, priority?: TaskPriority) => {
     if (!notificationsEnabled || Notification.permission !== 'granted') {
       return;
     }
 
     try {
+      const options = getNotificationOptions(priority);
       const notification = new Notification(title, {
         body,
-        icon: '/favicon.ico',
+        ...options
       });
 
       notification.onclick = () => {
@@ -116,7 +156,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       });
 
       dueTasks.forEach(task => {
-        showNotification('Task Reminder', `It's time for: ${task.title}`);
+        showNotification(
+          'Task Reminder', 
+          `It's time for: ${task.title}`,
+          task.priority
+        );
       });
     };
 

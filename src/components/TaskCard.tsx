@@ -1,10 +1,11 @@
 
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Circle, Clock } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task, useTasks } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TaskMenu } from './TaskMenu';
 
 interface TaskCardProps {
   task: Task;
@@ -33,6 +34,15 @@ export function TaskCard({ task }: TaskCardProps) {
     }
   };
 
+  const getPriorityColor = () => {
+    switch (task.priority) {
+      case 'High': return 'text-primary';
+      case 'Medium': return 'text-muted-foreground';
+      case 'Low': return 'text-muted-foreground/70';
+      default: return 'text-muted-foreground';
+    }
+  };
+
   const timeDisplay = getTimeDisplay();
 
   return (
@@ -43,6 +53,12 @@ export function TaskCard({ task }: TaskCardProps) {
             <span className={`category-badge ${getCategoryClass()}`}>
               {task.category}
             </span>
+            {task.priority && (
+              <span className={`inline-flex items-center text-xs ${getPriorityColor()}`}>
+                <Flag className="h-3 w-3 mr-1" />
+                {task.priority}
+              </span>
+            )}
             {task.recurrence !== 'none' && (
               <span className="text-xs text-muted-foreground">
                 {task.recurrence.charAt(0).toUpperCase() + task.recurrence.slice(1)}
@@ -68,26 +84,31 @@ export function TaskCard({ task }: TaskCardProps) {
           </div>
         </div>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => toggleTaskComplete(task.id)}
-              >
-                {task.completed ? (
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                ) : (
-                  <Circle className="h-5 w-5" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {task.completed ? "Mark as incomplete" : "Mark as complete"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => toggleTaskComplete(task.id)}
+                  className="h-8 w-8"
+                >
+                  {task.completed ? (
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Circle className="h-5 w-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {task.completed ? "Mark as incomplete" : "Mark as complete"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TaskMenu task={task} />
+        </div>
       </div>
     </div>
   );

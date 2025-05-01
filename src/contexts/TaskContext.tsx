@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 
 export type TaskCategory = 'Work' | 'Personal' | 'Shopping' | 'Health';
+export type TaskPriority = 'High' | 'Medium' | 'Low';
 
 export type RecurrencePattern = 
   | 'none' 
@@ -22,6 +23,7 @@ export interface Task {
   completed: boolean;
   recurrence: RecurrencePattern;
   recurrenceEndDate?: string; // ISO string
+  priority: TaskPriority;
 }
 
 interface TaskContextType {
@@ -47,7 +49,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     const savedTasks = localStorage.getItem('tasks');
     if (savedTasks) {
       try {
-        setTasks(JSON.parse(savedTasks));
+        // Add default priority if it doesn't exist in saved tasks
+        const parsedTasks = JSON.parse(savedTasks);
+        const updatedTasks = parsedTasks.map((task: Task) => ({
+          ...task,
+          priority: task.priority || 'Medium'
+        }));
+        setTasks(updatedTasks);
       } catch (e) {
         console.error('Failed to parse saved tasks', e);
       }

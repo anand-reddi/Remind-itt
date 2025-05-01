@@ -68,6 +68,11 @@ export default {
 					personal: '#000000',
 					shopping: '#000000',
 					health: '#000000',
+				},
+				priority: {
+					high: 'hsl(var(--priority-high))',
+					medium: 'hsl(var(--priority-medium))',
+					low: 'hsl(var(--priority-low))',
 				}
 			},
 			borderRadius: {
