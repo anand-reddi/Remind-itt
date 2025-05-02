@@ -1,33 +1,18 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { useTasks, TaskCategory, RecurrencePattern, TaskPriority } from '@/contexts/TaskContext';
 import { toast } from 'sonner';
-
-interface TaskFormProps {
-  onSubmit?: () => void;
-  editTask?: {
-    id: string;
-    title: string;
-    description?: string;
-    date: Date;
-    startTime?: string;
-    endTime?: string;
-    category: TaskCategory;
-    recurrence: RecurrencePattern;
-    priority: TaskPriority;
-  };
-}
+import { TaskFormProps } from '@/types/task';
+import { DatePicker } from './task-form/DatePicker';
+import { ReminderTime } from './task-form/ReminderTime';
+import { CategorySelect } from './task-form/CategorySelect';
+import { PrioritySelect } from './task-form/PrioritySelect';
+import { RecurrenceSelect } from './task-form/RecurrenceSelect';
 
 const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const [title, setTitle] = useState(editTask?.title || '');
@@ -58,8 +43,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       title,
       description,
       date: date.toISOString(),
-      startTime: reminderTime, // Use the single time field for reminders
-      endTime: '', // We're not using this anymore
+      startTime: reminderTime,
+      endTime: '',
       category,
       recurrence,
       priority
@@ -110,102 +95,19 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label>Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Select 
-            value={category} 
-            onValueChange={(value) => setCategory(value as TaskCategory)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Work">Work</SelectItem>
-              <SelectItem value="Personal">Personal</SelectItem>
-              <SelectItem value="Shopping">Shopping</SelectItem>
-              <SelectItem value="Health">Health</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <DatePicker date={date} onDateChange={setDate} />
+        <CategorySelect category={category} onCategoryChange={setCategory} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="reminderTime">Reminder Time</Label>
-          <div className="relative">
-            <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input 
-              id="reminderTime" 
-              type="time" 
-              value={reminderTime} 
-              onChange={(e) => setReminderTime(e.target.value)} 
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="priority">Priority</Label>
-          <Select 
-            value={priority} 
-            onValueChange={(value) => setPriority(value as TaskPriority)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select priority level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="High">High</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="Low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <ReminderTime 
+          reminderTime={reminderTime} 
+          onReminderTimeChange={setReminderTime} 
+        />
+        <PrioritySelect priority={priority} onPriorityChange={setPriority} />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="recurrence">Recurrence</Label>
-        <Select 
-          value={recurrence} 
-          onValueChange={(value) => setRecurrence(value as RecurrencePattern)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select recurrence pattern" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None (One-time)</SelectItem>
-            <SelectItem value="daily">Daily</SelectItem>
-            <SelectItem value="weekly">Weekly</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="yearly">Yearly</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <RecurrenceSelect recurrence={recurrence} onRecurrenceChange={setRecurrence} />
 
       <Button type="submit" className="w-full">
         {editTask ? 'Update Task' : 'Add Task'}
