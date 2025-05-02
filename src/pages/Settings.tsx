@@ -11,11 +11,11 @@ const Settings = () => {
   const { notificationsEnabled, toggleNotifications } = useNotifications();
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
+    <div className="max-w-2xl mx-auto">
       <h1 className="mb-6 text-2xl font-bold">Settings</h1>
       
       <div className="space-y-6">
-        <Card className="animate-fade-in">
+        <Card className="transition-all duration-300 ease-in-out">
           <CardHeader>
             <CardTitle>Appearance</CardTitle>
             <CardDescription>Customize how the app looks and feels</CardDescription>
@@ -34,7 +34,7 @@ const Settings = () => {
           </CardContent>
         </Card>
         
-        <Card className="animate-fade-in delay-100">
+        <Card className="transition-all duration-300 ease-in-out">
           <CardHeader>
             <CardTitle>Notifications</CardTitle>
             <CardDescription>Manage your notification preferences</CardDescription>
@@ -63,7 +63,7 @@ const Settings = () => {
           </CardContent>
         </Card>
         
-        <Card className="animate-fade-in delay-200">
+        <Card className="transition-all duration-300 ease-in-out">
           <CardHeader>
             <CardTitle>Snooze Options</CardTitle>
             <CardDescription>Configure reminder snooze durations</CardDescription>

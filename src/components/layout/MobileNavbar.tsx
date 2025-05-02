@@ -26,14 +26,14 @@ export function MobileNavbar() {
         </Link>
         
         <Link 
-          to="/weekly" 
+          to="/calendar" 
           className={cn(
             "flex flex-col items-center justify-center w-full h-full text-xs",
-            isActive('/weekly') ? "text-primary" : "text-muted-foreground"
+            isActive('/calendar') ? "text-primary" : "text-muted-foreground"
           )}
         >
           <CalendarDays size={20} />
-          <span className="mt-1">Weekly</span>
+          <span className="mt-1">Calendar</span>
         </Link>
         
         <Link 
@@ -43,17 +43,6 @@ export function MobileNavbar() {
           <div className="flex items-center justify-center rounded-full bg-primary w-12 h-12 text-primary-foreground">
             <Plus size={24} />
           </div>
-        </Link>
-        
-        <Link 
-          to="/monthly" 
-          className={cn(
-            "flex flex-col items-center justify-center w-full h-full text-xs",
-            isActive('/monthly') ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          <CalendarDays size={20} />
-          <span className="mt-1">Monthly</span>
         </Link>
         
         <Link 

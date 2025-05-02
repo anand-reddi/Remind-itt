@@ -32,16 +32,10 @@ export function Sidebar() {
               <span>Dashboard</span>
             </Button>
           </Link>
-          <Link to="/weekly">
+          <Link to="/calendar">
             <Button variant="ghost" className="w-full justify-start gap-2">
               <CalendarDays className="h-5 w-5" />
-              <span>Weekly View</span>
-            </Button>
-          </Link>
-          <Link to="/monthly">
-            <Button variant="ghost" className="w-full justify-start gap-2">
-              <CalendarDays className="h-5 w-5" />
-              <span>Monthly View</span>
+              <span>Calendar</span>
             </Button>
           </Link>
           <Link to="/settings">

@@ -14,7 +14,6 @@ import Calendar from "./pages/Calendar";
 import AddTask from "./pages/AddTask";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
