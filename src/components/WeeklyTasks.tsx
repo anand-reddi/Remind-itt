@@ -18,10 +18,6 @@ export function WeeklyTasks() {
   const goToNextWeek = () => {
     setCurrentDate(prevDate => addWeeks(prevDate, 1));
   };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
   
   // Get start of the selected week
   const startDay = startOfWeek(currentDate);
@@ -44,8 +40,8 @@ export function WeeklyTasks() {
   });
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="animate-fade-in">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center">
           <CalendarDays className="mr-2 h-5 w-5" />
           <h2 className="text-xl font-bold">Weekly View</h2>
@@ -54,7 +50,6 @@ export function WeeklyTasks() {
           <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={goToToday}>Today</Button>
           <Button variant="outline" size="icon" onClick={goToNextWeek}>
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -77,12 +72,12 @@ export function WeeklyTasks() {
         })}
       </div>
       
-      <div className="space-y-6">
+      <div className="space-y-4">
         {weekDays.map((day, index) => {
           const dayTasks = tasksByDate[day.formattedDate] || [];
           return (
-            <div key={index} className="rounded-lg border p-4 shadow-sm">
-              <h3 className="font-semibold mb-4">
+            <div key={index} className="rounded-lg border p-3 shadow-sm">
+              <h3 className="font-semibold mb-2">
                 {format(day.date, 'EEEE, MMMM d')}
                 <span className="text-muted-foreground ml-2">
                   ({dayTasks.length} task{dayTasks.length !== 1 ? 's' : ''})
@@ -90,13 +85,13 @@ export function WeeklyTasks() {
               </h3>
               
               {dayTasks.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   {dayTasks.map(task => (
                     <TaskCard key={task.id} task={task} />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6 text-muted-foreground">
+                <div className="text-center py-4 text-muted-foreground">
                   No tasks for this day
                 </div>
               )}

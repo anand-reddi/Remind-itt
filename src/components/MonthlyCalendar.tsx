@@ -49,22 +49,16 @@ export function MonthlyCalendar() {
   };
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="animate-fade-in">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center">
           <h2 className="text-xl font-bold">
             {format(currentDate, 'MMMM yyyy')}
           </h2>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           <Button variant="outline" size="icon" onClick={goToPrevMonth}>
             <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => setCurrentDate(new Date())}
-          >
-            Today
           </Button>
           <Button variant="outline" size="icon" onClick={goToNextMonth}>
             <ChevronRight className="h-4 w-4" />
@@ -72,8 +66,8 @@ export function MonthlyCalendar() {
         </div>
       </div>
       
-      <div className="rounded-lg border shadow-sm">
-        <div className="grid grid-cols-7 border-b">
+      <div className="rounded-lg border shadow-sm overflow-x-auto">
+        <div className="grid grid-cols-7 border-b w-full min-w-[640px]">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
             <div key={day} className="py-2 text-center font-semibold">
               {day}
@@ -81,7 +75,7 @@ export function MonthlyCalendar() {
           ))}
         </div>
         
-        <div className="divide-y">
+        <div className="divide-y w-full min-w-[640px]">
           {weeks.map((week, weekIndex) => (
             <div key={weekIndex} className="grid grid-cols-7 divide-x">
               {week.map((day, dayIndex) => {
@@ -90,7 +84,7 @@ export function MonthlyCalendar() {
                   <div 
                     key={dayIndex} 
                     className={cn(
-                      "min-h-[120px] p-2",
+                      "min-h-[100px] md:min-h-[120px] p-1 md:p-2",
                       day && isToday(day) && "bg-secondary/30",
                       !day && "bg-muted/20"
                     )}
@@ -98,27 +92,29 @@ export function MonthlyCalendar() {
                     {day && (
                       <>
                         <div className={cn(
-                          "mb-2 text-right text-sm",
+                          "mb-1 text-right text-sm",
                           isToday(day) && "font-bold text-primary"
                         )}>
                           {format(day, 'd')}
                         </div>
                         <div className="space-y-1">
-                          {dayTasks.slice(0, 3).map(task => (
+                          {dayTasks.slice(0, 2).map(task => (
                             <div 
                               key={task.id}
                               className={cn(
-                                "text-xs truncate rounded px-2 py-1",
-                                "bg-primary/10 text-primary",
+                                "text-xs truncate rounded px-1 py-0.5 md:px-2 md:py-1",
+                                task.priority === 'High' && "bg-red-500/10 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+                                task.priority === 'Medium' && "bg-yellow-500/10 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400",
+                                task.priority === 'Low' && "bg-green-500/10 text-green-600 dark:bg-green-900/30 dark:text-green-400",
                                 task.completed && "opacity-50"
                               )}
                             >
                               {task.title}
                             </div>
                           ))}
-                          {dayTasks.length > 3 && (
+                          {dayTasks.length > 2 && (
                             <div className="text-xs text-muted-foreground text-right">
-                              +{dayTasks.length - 3} more
+                              +{dayTasks.length - 2} more
                             </div>
                           )}
                         </div>
