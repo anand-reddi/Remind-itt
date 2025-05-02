@@ -12,7 +12,7 @@ export function Layout() {
         <Sidebar />
       </div>
       <ScrollArea className="flex-1 h-screen pb-16 md:pb-0">
-        <div className="container py-8">
+        <div className="px-3 py-4 md:container md:py-8">
           <Outlet />
         </div>
       </ScrollArea>

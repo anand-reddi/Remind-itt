@@ -2,10 +2,12 @@
 // Service Worker for handling push notifications
 self.addEventListener('install', (event) => {
   console.log('Service Worker installed');
+  self.skipWaiting(); // Force activation for new service worker
 });
 
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activated');
+  event.waitUntil(self.clients.claim()); // Take control of all clients
 });
 
 self.addEventListener('push', (event) => {
@@ -14,7 +16,8 @@ self.addEventListener('push', (event) => {
   // Default options
   const options = {
     body: data.body,
-    icon: '/favicon.ico',
+    icon: '/icon-192x192.png',
+    badge: '/icon-192x192.png',
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/'

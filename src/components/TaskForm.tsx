@@ -33,8 +33,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const [title, setTitle] = useState(editTask?.title || '');
   const [description, setDescription] = useState(editTask?.description || '');
   const [date, setDate] = useState<Date | undefined>(editTask?.date || new Date());
-  const [startTime, setStartTime] = useState(editTask?.startTime || '');
-  const [endTime, setEndTime] = useState(editTask?.endTime || '');
+  const [reminderTime, setReminderTime] = useState(editTask?.startTime || '');
   const [category, setCategory] = useState<TaskCategory>(editTask?.category || 'Work');
   const [recurrence, setRecurrence] = useState<RecurrencePattern>(editTask?.recurrence || 'none');
   const [priority, setPriority] = useState<TaskPriority>(editTask?.priority || 'Medium');
@@ -59,8 +58,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       title,
       description,
       date: date.toISOString(),
-      startTime,
-      endTime,
+      startTime: reminderTime, // Use the single time field for reminders
+      endTime: '', // We're not using this anymore
       category,
       recurrence,
       priority
@@ -78,8 +77,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
     setTitle('');
     setDescription('');
     setDate(new Date());
-    setStartTime('');
-    setEndTime('');
+    setReminderTime('');
     setCategory('Work');
     setRecurrence('none');
     setPriority('Medium');
@@ -159,52 +157,17 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="startTime">Start Time (Optional)</Label>
+          <Label htmlFor="reminderTime">Reminder Time</Label>
           <div className="relative">
             <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input 
-              id="startTime" 
+              id="reminderTime" 
               type="time" 
-              value={startTime} 
-              onChange={(e) => setStartTime(e.target.value)} 
+              value={reminderTime} 
+              onChange={(e) => setReminderTime(e.target.value)} 
               className="pl-10"
             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="endTime">End Time (Optional)</Label>
-          <div className="relative">
-            <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input 
-              id="endTime" 
-              type="time" 
-              value={endTime} 
-              onChange={(e) => setEndTime(e.target.value)} 
-              className="pl-10"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="recurrence">Recurrence</Label>
-          <Select 
-            value={recurrence} 
-            onValueChange={(value) => setRecurrence(value as RecurrencePattern)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select recurrence pattern" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None (One-time)</SelectItem>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="space-y-2">
@@ -223,6 +186,25 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="recurrence">Recurrence</Label>
+        <Select 
+          value={recurrence} 
+          onValueChange={(value) => setRecurrence(value as RecurrencePattern)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select recurrence pattern" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None (One-time)</SelectItem>
+            <SelectItem value="daily">Daily</SelectItem>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="yearly">Yearly</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Button type="submit" className="w-full">

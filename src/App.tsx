@@ -22,9 +22,18 @@ const queryClient = new QueryClient();
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
       .then(registration => {
         console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        
+        // Check if there's an update
+        registration.update();
+        
+        // Set up regular checks for updates
+        setInterval(() => {
+          registration.update();
+          console.log('Checking for service worker updates...');
+        }, 60 * 60 * 1000); // Check every hour
       })
       .catch(error => {
         console.log('ServiceWorker registration failed: ', error);

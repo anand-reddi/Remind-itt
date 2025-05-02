@@ -15,6 +15,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const { getTodaysTasks } = useTasks();
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   // Check if notifications are supported and permission on mount
   useEffect(() => {
@@ -29,7 +30,42 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       }
     };
 
+    // Register service worker for notifications
+    const registerServiceWorker = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/'
+          });
+          console.log('ServiceWorker registration successful with scope:', registration.scope);
+          setSwRegistration(registration);
+          
+          // Check if service worker is active
+          if (registration.active) {
+            console.log('Service worker is active');
+          } else {
+            console.log('Service worker is not active yet');
+            // Wait for the service worker to be ready
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'activated') {
+                    console.log('Service worker now active');
+                    setSwRegistration(registration);
+                  }
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('ServiceWorker registration failed:', error);
+        }
+      }
+    };
+
     checkNotificationStatus();
+    registerServiceWorker();
   }, []);
 
   const requestNotificationPermission = async (): Promise<boolean> => {
@@ -65,12 +101,13 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
   const getNotificationOptions = (priority?: TaskPriority) => {
     const defaultOptions = {
-      icon: '/favicon.ico',
+      icon: '/icon-192x192.png',
       vibrate: [100, 50, 100],
-      badge: '/favicon.ico',
+      badge: '/icon-192x192.png',
       data: {
         url: window.location.origin
-      }
+      },
+      tag: 'task-reminder'
     };
 
     if (!priority) return defaultOptions;
@@ -80,8 +117,6 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         return {
           ...defaultOptions,
           vibrate: [200, 100, 200, 100, 200],
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
           tag: 'high-priority',
           requireInteraction: true,
         };
@@ -109,15 +144,34 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     try {
       const options = getNotificationOptions(priority);
-      const notification = new Notification(title, {
-        body,
-        ...options
-      });
 
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
+      // Use service worker if available (better for mobile)
+      if (swRegistration) {
+        console.log('Using service worker to show notification');
+        swRegistration.showNotification(title, {
+          body,
+          ...options
+        }).catch(error => {
+          console.error('Error showing notification via service worker:', error);
+          // Fallback to regular Notification
+          new Notification(title, {
+            body,
+            ...options
+          });
+        });
+      } else {
+        // Fallback to regular Notification API
+        console.log('Using regular Notification API');
+        const notification = new Notification(title, {
+          body,
+          ...options
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      }
     } catch (error) {
       console.error('Error showing notification:', error);
     }
@@ -150,7 +204,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       const dueTasks = tasks.filter(task => {
         if (!task.completed && task.startTime) {
           const [hours, minutes] = task.startTime.split(':').map(Number);
-          return now.getHours() === hours && now.getMinutes() === minutes;
+          const currentMinutes = now.getMinutes();
+          const currentHours = now.getHours();
+          
+          // Check if the task is due within the last minute
+          return currentHours === hours && currentMinutes === minutes;
         }
         return false;
       });
@@ -167,7 +225,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     // Run immediately to check for any tasks due now
     checkDueTasks();
     
-    const intervalId = setInterval(checkDueTasks, 60000); // Check every minute
+    const intervalId = setInterval(checkDueTasks, 30000); // Check every 30 seconds
     
     return () => clearInterval(intervalId);
   }, [notificationsEnabled, getTodaysTasks]);

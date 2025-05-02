@@ -4,15 +4,22 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TaskCard } from '@/components/TaskCard';
-import { useTasks } from '@/contexts/TaskContext';
+import { useTasks, TaskPriority } from '@/contexts/TaskContext';
 import { Link } from 'react-router-dom';
+
+// Helper function to get tasks by priority
+const getTasksByPriority = (tasks: any[], priority: TaskPriority) => {
+  return tasks.filter(task => task.priority === priority && !task.completed);
+};
 
 export function DailyTasks() {
   const [today] = useState(new Date());
   const { getTasksByDate } = useTasks();
   
   const tasks = getTasksByDate(today);
-  const pendingTasks = tasks.filter(task => !task.completed);
+  const highPriorityTasks = getTasksByPriority(tasks, 'High');
+  const mediumPriorityTasks = getTasksByPriority(tasks, 'Medium');
+  const lowPriorityTasks = getTasksByPriority(tasks, 'Low');
   const completedTasks = tasks.filter(task => task.completed);
 
   return (
@@ -30,21 +37,50 @@ export function DailyTasks() {
         </Link>
       </div>
 
-      <div>
-        <h3 className="mb-3 font-semibold">{pendingTasks.length > 0 ? `Pending (${pendingTasks.length})` : 'No pending tasks'}</h3>
-        {pendingTasks.length > 0 ? (
+      {/* High Priority Tasks */}
+      {highPriorityTasks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="mb-3 font-semibold text-priority-high">High Priority ({highPriorityTasks.length})</h3>
           <div className="grid grid-cols-1 gap-3">
-            {pendingTasks.map(task => (
+            {highPriorityTasks.map(task => (
               <TaskCard key={task.id} task={task} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">You're all caught up!</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* Medium Priority Tasks */}
+      {mediumPriorityTasks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="mb-3 font-semibold text-priority-medium">Medium Priority ({mediumPriorityTasks.length})</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {mediumPriorityTasks.map(task => (
+              <TaskCard key={task.id} task={task} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Low Priority Tasks */}
+      {lowPriorityTasks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="mb-3 font-semibold text-priority-low">Low Priority ({lowPriorityTasks.length})</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {lowPriorityTasks.map(task => (
+              <TaskCard key={task.id} task={task} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No Tasks Message */}
+      {highPriorityTasks.length === 0 && mediumPriorityTasks.length === 0 && lowPriorityTasks.length === 0 && (
+        <div className="rounded-lg border border-dashed p-8 text-center mb-6">
+          <p className="text-muted-foreground">You're all caught up!</p>
+        </div>
+      )}
+
+      {/* Completed Tasks */}
       {completedTasks.length > 0 && (
         <div className="mt-8">
           <h3 className="mb-3 font-semibold">Completed ({completedTasks.length})</h3>
