@@ -1,7 +1,8 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useTasks, Task, TaskPriority } from './TaskContext';
+import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core';
 
 interface NotificationContextType {
   notificationsEnabled: boolean;
@@ -16,164 +17,114 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const { getTodaysTasks } = useTasks();
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [isNative, setIsNative] = useState<boolean>(false);
 
-  // Check if notifications are supported and permission on mount
   useEffect(() => {
-    const checkNotificationStatus = async () => {
-      if (!('Notification' in window)) {
-        console.log('This browser does not support notifications');
-        return;
-      }
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
-      if (Notification.permission === 'granted') {
-        setNotificationsEnabled(localStorage.getItem('notificationsEnabled') === 'true');
-      }
-    };
-
-    // Register service worker for notifications
-    const registerServiceWorker = async () => {
-      if ('serviceWorker' in navigator) {
+  useEffect(() => {
+    const init = async () => {
+      if (isNative) {
         try {
-          const registration = await navigator.serviceWorker.register('/service-worker.js', {
-            scope: '/'
-          });
-          console.log('ServiceWorker registration successful with scope:', registration.scope);
-          setSwRegistration(registration);
-          
-          // Check if service worker is active
-          if (registration.active) {
-            console.log('Service worker is active');
-          } else {
-            console.log('Service worker is not active yet');
-            // Wait for the service worker to be ready
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'activated') {
-                    console.log('Service worker now active');
-                    setSwRegistration(registration);
-                  }
-                });
-              }
-            });
-          }
+          await LocalNotifications.requestPermissions();
+          console.log('Capacitor Local Notifications ready');
+          setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
         } catch (error) {
-          console.error('ServiceWorker registration failed:', error);
+          console.error('Local Notification Permission Error', error);
+          setNotificationsEnabled(false);
+        }
+      } else {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          setNotificationsEnabled(localStorage.getItem('notificationsEnabled') === 'true');
         }
       }
     };
-
-    checkNotificationStatus();
-    registerServiceWorker();
-  }, []);
+    init();
+  }, [isNative]);
 
   const requestNotificationPermission = async (): Promise<boolean> => {
-    if (!('Notification' in window)) {
-      toast.error('Notifications are not supported in this browser');
-      return false;
-    }
-
-    if (Notification.permission === 'granted') {
-      setNotificationsEnabled(true);
-      localStorage.setItem('notificationsEnabled', 'true');
-      return true;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      
-      if (permission === 'granted') {
-        setNotificationsEnabled(true);
-        localStorage.setItem('notificationsEnabled', 'true');
-        toast.success('Notifications enabled successfully');
-        return true;
-      } else {
-        toast.error('Permission for notifications was denied');
+    if (isNative) {
+      try {
+        const permission = await LocalNotifications.requestPermissions();
+        if (permission.display === 'granted') {
+          setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
+          toast.success('Notifications enabled successfully');
+          return true;
+        } else {
+          toast.error('Permission for notifications was denied');
+          return false;
+        }
+      } catch (error) {
+        console.error('Local notification permission error:', error);
         return false;
       }
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      toast.error('Failed to enable notifications');
-      return false;
+    } else if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setNotificationsEnabled(true);
+        localStorage.setItem('notificationsEnabled', 'true');
+        return true;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
+          toast.success('Notifications enabled successfully');
+          return true;
+        } else {
+          toast.error('Permission for notifications was denied');
+          return false;
+        }
+      } catch (error) {
+        console.error('Web requestPermission error:', error);
+        return false;
+      }
     }
+    toast.error('Notifications are not supported on this platform');
+    return false;
   };
 
-  const getNotificationOptions = (priority?: TaskPriority) => {
-    const defaultOptions = {
-      icon: '/icon-192x192.png',
-      vibrate: [100, 50, 100],
-      badge: '/icon-192x192.png',
-      data: {
-        url: window.location.origin
-      },
-      tag: 'task-reminder'
-    };
+  const getNotificationOptions = (priority?: TaskPriority) => ({
+    icon: '/icon-192x192.png',
+    vibrate: priority === 'High' ? [200, 100, 200] : [100],
+    badge: '/icon-192x192.png',
+    data: { url: window.location.origin },
+  });
 
-    if (!priority) return defaultOptions;
+  const showNotification = async (title: string, body: string, priority?: TaskPriority) => {
+    if (!notificationsEnabled) return;
 
-    switch (priority) {
-      case 'High':
-        return {
-          ...defaultOptions,
-          vibrate: [200, 100, 200, 100, 200],
-          tag: 'high-priority',
-          requireInteraction: true,
-        };
-      case 'Medium':
-        return {
-          ...defaultOptions,
-          vibrate: [100, 50, 100],
-          tag: 'medium-priority',
-        };
-      case 'Low':
-        return {
-          ...defaultOptions,
-          vibrate: [50],
-          tag: 'low-priority',
-        };
-      default:
-        return defaultOptions;
-    }
-  };
-
-  const showNotification = (title: string, body: string, priority?: TaskPriority) => {
-    if (!notificationsEnabled || Notification.permission !== 'granted') {
-      return;
-    }
-
-    try {
+    if (isNative) {
+      try {
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title,
+              body,
+              id: Date.now(), // use timestamp as unique id
+              schedule: { at: new Date() }, // show immediately
+              sound: priority === 'High' ? 'beep.wav' : undefined, // optional custom sounds
+              smallIcon: 'ic_launcher',
+              iconColor: '#0000ff',
+            },
+          ],
+        });
+      } catch (error) {
+        console.error('Local notification schedule error:', error);
+      }
+    } else if ('Notification' in window && Notification.permission === 'granted') {
       const options = getNotificationOptions(priority);
-
-      // Use service worker if available (better for mobile)
       if (swRegistration) {
-        console.log('Using service worker to show notification');
-        swRegistration.showNotification(title, {
-          body,
-          ...options
-        }).catch(error => {
-          console.error('Error showing notification via service worker:', error);
-          // Fallback to regular Notification
-          new Notification(title, {
-            body,
-            ...options
-          });
+        swRegistration.showNotification(title, { body, ...options }).catch(error => {
+          console.error('ServiceWorker notification error:', error);
+          new Notification(title, { body, ...options });
         });
       } else {
-        // Fallback to regular Notification API
-        console.log('Using regular Notification API');
-        const notification = new Notification(title, {
-          body,
-          ...options
-        });
-
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
+        new Notification(title, { body, ...options });
       }
-    } catch (error) {
-      console.error('Error showing notification:', error);
     }
   };
 
@@ -185,7 +136,6 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
-        // Send a test notification to confirm it's working
         setTimeout(() => {
           showNotification('Notifications Enabled', 'You will now receive task reminders');
         }, 1000);
@@ -193,42 +143,26 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  // Check for due tasks every minute when notifications are enabled
   useEffect(() => {
     if (!notificationsEnabled) return;
 
     const checkDueTasks = () => {
       const now = new Date();
       const tasks = getTodaysTasks();
-      
-      const dueTasks = tasks.filter(task => {
+      tasks.forEach(task => {
         if (!task.completed && task.startTime) {
-          const [hours, minutes] = task.startTime.split(':').map(Number);
-          const currentMinutes = now.getMinutes();
-          const currentHours = now.getHours();
-          
-          // Check if the task is due within the last minute
-          return currentHours === hours && currentMinutes === minutes;
+          const [h, m] = task.startTime.split(':').map(Number);
+          if (h === now.getHours() && m === now.getMinutes()) {
+            showNotification('Task Reminder', `It's time for: ${task.title}`, task.priority);
+          }
         }
-        return false;
-      });
-
-      dueTasks.forEach(task => {
-        showNotification(
-          'Task Reminder', 
-          `It's time for: ${task.title}`,
-          task.priority
-        );
       });
     };
 
-    // Run immediately to check for any tasks due now
     checkDueTasks();
-    
-    const intervalId = setInterval(checkDueTasks, 30000); // Check every 30 seconds
-    
+    const intervalId = setInterval(checkDueTasks, 30000);
     return () => clearInterval(intervalId);
-  }, [notificationsEnabled, getTodaysTasks]);
+  }, [notificationsEnabled, getTodaysTasks, isNative]);
 
   return (
     <NotificationContext.Provider
@@ -236,7 +170,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         notificationsEnabled,
         requestNotificationPermission,
         showNotification,
-        toggleNotifications
+        toggleNotifications,
       }}
     >
       {children}

@@ -109,8 +109,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
 
       <RecurrenceSelect recurrence={recurrence} onRecurrenceChange={setRecurrence} />
 
-      <Button type="submit" className="w-full">
-        {editTask ? 'Update Task' : 'Add Task'}
+      <Button type="submit" className="w-full text-2xl font-bold font-caveat">
+        {editTask ? 'Update itt' : 'Remind itt'}
       </Button>
     </form>
   );
