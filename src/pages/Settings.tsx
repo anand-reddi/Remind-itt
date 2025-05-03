@@ -11,7 +11,7 @@ const Settings = () => {
   const { notificationsEnabled, toggleNotifications } = useNotifications();
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto animate-fade-in">
       <h1 className="mb-6 text-2xl font-bold">Settings</h1>
       
       <div className="space-y-6">

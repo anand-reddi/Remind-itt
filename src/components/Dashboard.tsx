@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { DailyTasks } from './DailyTasks';
-import { useQuote } from '@/contexts/QuoteContext';
 import { useTasks } from '@/contexts/TaskContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { AlertCircle } from 'lucide-react';
@@ -9,7 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
-  const { quote } = useQuote();
   const { getTodaysTasks } = useTasks();
   const { showNotification } = useNotifications();
   const [showAiSuggestion, setShowAiSuggestion] = useState(false);
@@ -36,23 +34,12 @@ export function Dashboard() {
   const handleRescheduleSuggestion = () => {
     // In a real implementation, this would open a dialog to help reschedule tasks
     // For now, just redirect to weekly view
-    navigate('/weekly');
+    navigate('/calendar');
     setShowAiSuggestion(false);
   };
 
   return (
     <div className="space-y-8">
-      {quote && (
-        <div className="animate-fade-in rounded-lg bg-card p-6 shadow-md">
-          <blockquote className="space-y-2">
-            <p className="text-lg font-medium italic">"{quote.text}"</p>
-            <footer className="text-right text-sm text-muted-foreground">
-              — {quote.author}
-            </footer>
-          </blockquote>
-        </div>
-      )}
-
       {showAiSuggestion && (
         <Alert className="bg-primary/10 text-primary border-primary/20">
           <AlertCircle className="h-4 w-4" />

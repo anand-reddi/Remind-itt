@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CalendarDays, Plus, Settings } from 'lucide-react';
+import { Home, CalendarDays, Plus, Settings, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MobileNavbar() {
@@ -26,14 +26,14 @@ export function MobileNavbar() {
         </Link>
         
         <Link 
-          to="/weekly" 
+          to="/recent" 
           className={cn(
             "flex flex-col items-center justify-center w-full h-full text-xs",
-            isActive('/weekly') ? "text-primary" : "text-muted-foreground"
+            isActive('/recent') ? "text-primary" : "text-muted-foreground"
           )}
         >
-          <CalendarDays size={20} />
-          <span className="mt-1">Weekly</span>
+          <Clock size={20} />
+          <span className="mt-1">Recent</span>
         </Link>
         
         <Link 
@@ -46,14 +46,14 @@ export function MobileNavbar() {
         </Link>
         
         <Link 
-          to="/monthly" 
+          to="/calendar" 
           className={cn(
             "flex flex-col items-center justify-center w-full h-full text-xs",
-            isActive('/monthly') ? "text-primary" : "text-muted-foreground"
+            isActive('/calendar') ? "text-primary" : "text-muted-foreground"
           )}
         >
           <CalendarDays size={20} />
-          <span className="mt-1">Monthly</span>
+          <span className="mt-1">Calendar</span>
         </Link>
         
         <Link 

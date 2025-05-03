@@ -42,11 +42,24 @@ export function TaskCard({ task }: TaskCardProps) {
       default: return 'text-muted-foreground';
     }
   };
+  
+  const getPriorityCardClass = () => {
+    switch (task.priority) {
+      case 'High': return 'bg-red-900/10 dark:bg-red-500/10 border-red-500/20';
+      case 'Medium': return 'bg-amber-900/10 dark:bg-amber-500/10 border-amber-500/20';
+      case 'Low': return 'bg-green-900/10 dark:bg-green-500/10 border-green-500/20';
+      default: return '';
+    }
+  };
 
   const timeDisplay = getTimeDisplay();
 
   return (
-    <div className={cn("task-card", task.completed && "opacity-60")}>
+    <div className={cn(
+      "task-card", 
+      getPriorityCardClass(),
+      task.completed && "opacity-60"
+    )}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="mb-2 flex items-center gap-2">

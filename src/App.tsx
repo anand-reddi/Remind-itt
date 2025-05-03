@@ -10,12 +10,11 @@ import { QuoteProvider } from './contexts/QuoteContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { Layout } from './components/layout/Layout';
 import Index from "./pages/Index";
-import WeeklyView from "./pages/WeeklyView";
-import MonthlyView from "./pages/MonthlyView";
+import Calendar from "./pages/Calendar";
+import Recent from "./pages/Recent";
 import AddTask from "./pages/AddTask";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -54,8 +53,8 @@ const App = () => (
                 <Routes>
                   <Route element={<Layout />}>
                     <Route path="/" element={<Index />} />
-                    <Route path="/weekly" element={<WeeklyView />} />
-                    <Route path="/monthly" element={<MonthlyView />} />
+                    <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/recent" element={<Recent />} />
                     <Route path="/add" element={<AddTask />} />
                     <Route path="/settings" element={<Settings />} />
                   </Route>
