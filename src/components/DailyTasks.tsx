@@ -1,11 +1,8 @@
 
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { TaskCard } from '@/components/TaskCard';
 import { useTasks, TaskPriority } from '@/contexts/TaskContext';
-import { Link } from 'react-router-dom';
 
 // Helper function to get tasks by priority
 const getTasksByPriority = (tasks: any[], priority: TaskPriority) => {
@@ -24,17 +21,9 @@ export function DailyTasks() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Today's Tasks</h2>
-          <p className="text-muted-foreground">{format(today, 'EEEE, MMMM d, yyyy')}</p>
-        </div>
-        <Link to="/add">
-          <Button className="gap-1">
-            <Plus className="h-4 w-4" />
-            <span>Add Reminder</span>
-          </Button>
-        </Link>
+      <div className="mb-6">
+        <h2 className="text-xl font-bold">Today's Tasks</h2>
+        <p className="text-muted-foreground">{format(today, 'EEEE, MMMM d, yyyy')}</p>
       </div>
 
       {/* High Priority Tasks */}
