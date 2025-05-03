@@ -7,10 +7,9 @@ export function TopNavbar() {
   const { theme, toggleTheme } = useTheme();
   
   return (
-    <div className="h-16 border-b border-border bg-background flex items-center justify-between px-4 md:px-6">
+    <div className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
       <div className="flex items-center">
         <Link to="/" className="flex items-center gap-2 font-semibold text-lg mr-8">
-          <span className="h-6 w-6 rounded-full bg-primary text-white text-center">S</span>
           <span>Spark</span>
         </Link>
         

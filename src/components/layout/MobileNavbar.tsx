@@ -37,6 +37,15 @@ export function MobileNavbar() {
         </Link>
         
         <Link 
+          to="/add" 
+          className="flex flex-col items-center justify-center w-full h-full"
+        >
+          <div className="flex items-center justify-center rounded-full bg-primary w-12 h-12 text-primary-foreground">
+            <Plus size={24} />
+          </div>
+        </Link>
+        
+        <Link 
           to="/calendar" 
           className={cn(
             "flex flex-col items-center justify-center w-full h-full text-xs",
@@ -45,15 +54,6 @@ export function MobileNavbar() {
         >
           <CalendarDays size={20} />
           <span className="mt-1">Calendar</span>
-        </Link>
-        
-        <Link 
-          to="/add" 
-          className="flex flex-col items-center justify-center w-full h-full"
-        >
-          <div className="flex items-center justify-center rounded-full bg-primary w-12 h-12 text-primary-foreground">
-            <Plus size={24} />
-          </div>
         </Link>
         
         <Link 
