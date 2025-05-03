@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CalendarDays, Plus, Settings } from 'lucide-react';
+import { Home, CalendarDays, Plus, Settings, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MobileNavbar() {
@@ -23,6 +23,17 @@ export function MobileNavbar() {
         >
           <Home size={20} />
           <span className="mt-1">Home</span>
+        </Link>
+        
+        <Link 
+          to="/recent" 
+          className={cn(
+            "flex flex-col items-center justify-center w-full h-full text-xs",
+            isActive('/recent') ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          <Clock size={20} />
+          <span className="mt-1">Recent</span>
         </Link>
         
         <Link 

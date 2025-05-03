@@ -11,6 +11,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { Layout } from './components/layout/Layout';
 import Index from "./pages/Index";
 import Calendar from "./pages/Calendar";
+import Recent from "./pages/Recent";
 import AddTask from "./pages/AddTask";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -53,6 +54,7 @@ const App = () => (
                   <Route element={<Layout />}>
                     <Route path="/" element={<Index />} />
                     <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/recent" element={<Recent />} />
                     <Route path="/add" element={<AddTask />} />
                     <Route path="/settings" element={<Settings />} />
                   </Route>

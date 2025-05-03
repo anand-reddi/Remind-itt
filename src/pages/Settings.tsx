@@ -15,7 +15,7 @@ const Settings = () => {
       <h1 className="mb-6 text-2xl font-bold">Settings</h1>
       
       <div className="space-y-6">
-        <Card className="animate-fade-in">
+        <Card>
           <CardHeader>
             <CardTitle>Appearance</CardTitle>
             <CardDescription>Customize how the app looks and feels</CardDescription>
@@ -34,7 +34,7 @@ const Settings = () => {
           </CardContent>
         </Card>
         
-        <Card className="animate-fade-in animate-delay-100">
+        <Card>
           <CardHeader>
             <CardTitle>Notifications</CardTitle>
             <CardDescription>Manage your notification preferences</CardDescription>
@@ -63,7 +63,7 @@ const Settings = () => {
           </CardContent>
         </Card>
         
-        <Card className="animate-fade-in animate-delay-200">
+        <Card>
           <CardHeader>
             <CardTitle>Snooze Options</CardTitle>
             <CardDescription>Configure reminder snooze durations</CardDescription>
