@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Sun, Moon } from 'lucide-react';
 
 export function TopNavbar() {
   const { theme, toggleTheme } = useTheme();
@@ -10,7 +11,7 @@ export function TopNavbar() {
     <div className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
       <div className="flex items-center">
         <Link to="/" className="flex items-center gap-2 font-semibold text-lg mr-8">
-          <span className="font-serif text-xl tracking-wide">Remind itt</span>
+          <span className="font-caveat text-2xl tracking-wide">Remind itt</span>
         </Link>
         
         <div className="hidden md:flex items-center space-x-4">
@@ -29,9 +30,14 @@ export function TopNavbar() {
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-md hover:bg-secondary transition-colors"
+          className="p-2 rounded-md hover:bg-accent transition-colors relative w-8 h-8 flex items-center justify-center"
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {theme === 'dark' ? '🌞' : '🌙'}
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 animate-theme-toggle" />
+          ) : (
+            <Moon className="w-5 h-5 animate-theme-toggle" />
+          )}
         </button>
       </div>
     </div>
