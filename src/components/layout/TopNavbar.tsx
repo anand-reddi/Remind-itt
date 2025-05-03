@@ -10,7 +10,7 @@ export function TopNavbar() {
     <div className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
       <div className="flex items-center">
         <Link to="/" className="flex items-center gap-2 font-semibold text-lg mr-8">
-          <span>Spark</span>
+          <span className="font-serif text-xl tracking-wide">Remind itt</span>
         </Link>
         
         <div className="hidden md:flex items-center space-x-4">
