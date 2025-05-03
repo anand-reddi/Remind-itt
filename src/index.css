@@ -100,6 +100,13 @@
 
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Add styles for the Remind itt header */
+  .remind-itt-header {
+    @apply font-caveat text-2xl tracking-wide;
   }
 }
 
@@ -138,5 +145,35 @@
   
   .priority-low {
     @apply text-[hsl(var(--priority-low))];
+  }
+  
+  /* Glass effect for navbar */
+  .glass-navbar {
+    @apply backdrop-blur-md bg-background/80 border-border;
+  }
+  
+  /* PWA improvements */
+  .pwa-fixed {
+    position: fixed;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Theme toggle animation */
+  .theme-icon {
+    @apply animate-theme-toggle;
+  }
+}
+
+/* Remove tap highlight on mobile */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html, body {
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
   }
 }

@@ -52,6 +52,7 @@ const config = {
       fontFamily: {
         sans: ["Inter", ...fontFamily.sans],
         serif: ["Playfair Display", ...fontFamily.serif],
+        caveat: ["Caveat", "cursive"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -87,12 +88,32 @@ const config = {
             transform: "translateY(10px)"
           }
         },
+        "spin": {
+          "0%": {
+            transform: "rotate(0deg)"
+          },
+          "100%": {
+            transform: "rotate(360deg)"
+          }
+        },
+        "theme-toggle": {
+          "0%": { 
+            opacity: "0",
+            transform: "scale(0.5)" 
+          },
+          "100%": { 
+            opacity: "1",
+            transform: "scale(1)" 
+          }
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
         "fade-out": "fade-out 0.3s ease-out",
+        "spin": "spin 1s linear infinite",
+        "theme-toggle": "theme-toggle 0.3s ease-out"
       },
     },
   },

@@ -43,6 +43,7 @@ export function MobileNavbar() {
           <div className="flex items-center justify-center rounded-full bg-primary w-12 h-12 text-primary-foreground">
             <Plus size={24} />
           </div>
+          <span className="mt-1 text-xs">Remind itt</span>
         </Link>
         
         <Link 
