@@ -1,202 +1,76 @@
 
 import React, { useState } from 'react';
-import { format, addDays, startOfWeek, addMonths, subMonths, isSameDay } from 'date-fns';
+import { format, addMonths, subMonths, isSameDay, parseISO } from 'date-fns';
 import { Task, useTasks } from '@/contexts/TaskContext';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const { tasks } = useTasks();
 
   // Functions to navigate between months
-  const goToPrevious = () => {
-    if (view === 'month') {
-      setCurrentDate(prevDate => subMonths(prevDate, 1));
-    } else if (view === 'week') {
-      setCurrentDate(prevDate => addDays(prevDate, -7));
-    } else {
-      setCurrentDate(prevDate => addDays(prevDate, -1));
-    }
+  const goToPreviousMonth = () => {
+    setCurrentDate(prevDate => subMonths(prevDate, 1));
   };
 
-  const goToNext = () => {
-    if (view === 'month') {
-      setCurrentDate(prevDate => addMonths(prevDate, 1));
-    } else if (view === 'week') {
-      setCurrentDate(prevDate => addDays(prevDate, 7));
-    } else {
-      setCurrentDate(prevDate => addDays(prevDate, 1));
-    }
+  const goToNextMonth = () => {
+    setCurrentDate(prevDate => addMonths(prevDate, 1));
   };
 
   // Generate month grid
   const generateMonthView = () => {
-    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const startDate = startOfWeek(firstDayOfMonth);
-    const daysArray = [];
-
-    // Generate days for 6 weeks to ensure we cover the month
-    for (let i = 0; i < 42; i++) {
-      const date = addDays(startDate, i);
-      daysArray.push(date);
-    }
-
-    // Break days into week chunks
-    const weeks = [];
-    for (let i = 0; i < daysArray.length; i += 7) {
-      weeks.push(daysArray.slice(i, i + 7));
-    }
-
-    return (
-      <div className="animate-fade-in">
-        <div className="grid grid-cols-7 text-center font-medium mb-2">
-          <div>M</div>
-          <div>T</div>
-          <div>W</div>
-          <div>T</div>
-          <div>F</div>
-          <div>S</div>
-          <div>S</div>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1 mb-4">
-          {daysArray.map((date, index) => {
-            const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-            const isToday = isSameDay(date, new Date());
-            const dayTasks = tasks.filter(task => isSameDay(new Date(task.date), date));
-            const hasTask = dayTasks.length > 0;
-            
-            return (
-              <div 
-                key={index} 
-                className={`aspect-square flex flex-col items-center justify-center rounded-full relative ${
-                  isCurrentMonth ? '' : 'opacity-30'
-                } ${
-                  isToday ? 'bg-primary text-primary-foreground' : ''
-                }`}
-              >
-                <span className="text-sm md:text-base">{format(date, 'd')}</span>
-                {hasTask && (
-                  <span className="absolute bottom-1 h-1 w-1 rounded-full bg-primary"></span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="space-y-2">
-          {getTasksForDate(currentDate).map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Generate day view
-  const generateDayView = () => {
-    const hoursOfDay = Array.from({ length: 24 }, (_, i) => i);
-    const dayTasks = getTasksForDate(currentDate);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
     
-    return (
-      <div className="animate-fade-in">
-        <div className="space-y-4">
-          {hoursOfDay.map((hour) => {
-            const hourTasks = dayTasks.filter(task => {
-              const taskTime = task.startTime ? parseInt(task.startTime.split(':')[0]) : null;
-              return taskTime === hour;
-            });
-            
-            if (hourTasks.length === 0) return null;
-            
-            return (
-              <div key={hour} className="border-t pt-2">
-                <div className="text-sm text-muted-foreground mb-1">{hour.toString().padStart(2, '0')}:00</div>
-                <div className="space-y-2">
-                  {hourTasks.map(task => (
-                    <TaskCard key={task.id} task={task} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          
-          {dayTasks.length === 0 && (
-            <div className="text-center py-10 text-muted-foreground">
-              No tasks for this day
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Generate week view
-  const generateWeekView = () => {
-    const startOfCurrentWeek = startOfWeek(currentDate);
-    const daysOfWeek = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
-    const hoursOfDay = Array.from({ length: 24 }, (_, i) => i);
+    // Get first day of month and how many days to show before it
+    const firstDayOfMonth = new Date(year, month, 1);
+    const startingDayOfWeek = firstDayOfMonth.getDay() || 7; // Adjust Sunday from 0 to 7
+    const daysToShowBeforeMonth = startingDayOfWeek - 1;
     
-    return (
-      <div className="animate-fade-in overflow-x-auto">
-        <div className="grid grid-cols-7 gap-1 mb-4 min-w-[700px]">
-          {daysOfWeek.map((date, index) => {
-            const isToday = isSameDay(date, new Date());
-            return (
-              <div 
-                key={index} 
-                className={`text-center py-2 ${isToday ? 'bg-primary/10 rounded-md' : ''}`}
-              >
-                <div className="text-sm">{format(date, 'EEE')}</div>
-                <div className={`text-lg font-medium ${isToday ? 'text-primary' : ''}`}>
-                  {format(date, 'd')}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="space-y-4 min-w-[700px] pt-2">
-          {hoursOfDay.map((hour) => {
-            const hasTasksInHour = daysOfWeek.some(day => {
-              const tasksForDay = getTasksForDate(day);
-              return tasksForDay.some(task => {
-                const taskTime = task.startTime ? parseInt(task.startTime.split(':')[0]) : null;
-                return taskTime === hour;
-              });
-            });
-            
-            if (!hasTasksInHour) return null;
-            
-            return (
-              <div key={hour} className="grid grid-cols-7 gap-1 border-t pt-2">
-                <div className="col-span-7 text-xs text-muted-foreground mb-1">
-                  {hour.toString().padStart(2, '0')}:00
-                </div>
-                {daysOfWeek.map((day, dayIndex) => {
-                  const tasksForDay = getTasksForDate(day);
-                  const tasksForHour = tasksForDay.filter(task => {
-                    const taskTime = task.startTime ? parseInt(task.startTime.split(':')[0]) : null;
-                    return taskTime === hour;
-                  });
-                  
-                  return (
-                    <div key={dayIndex} className="min-h-[60px]">
-                      {tasksForHour.map(task => (
-                        <TaskCard key={task.id} task={task} compact />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    // Calculate days in month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Calculate days from previous month to display
+    const previousMonth = month === 0 ? 11 : month - 1;
+    const previousMonthYear = month === 0 ? year - 1 : year;
+    const daysInPreviousMonth = new Date(previousMonthYear, previousMonth + 1, 0).getDate();
+    
+    // Generate calendar days
+    const days = [];
+    
+    // Add days from previous month
+    for (let i = daysInPreviousMonth - daysToShowBeforeMonth + 1; i <= daysInPreviousMonth; i++) {
+      days.push({
+        date: new Date(previousMonthYear, previousMonth, i),
+        isCurrentMonth: false
+      });
+    }
+    
+    // Add days from current month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        date: new Date(year, month, i),
+        isCurrentMonth: true
+      });
+    }
+    
+    // Add days from next month to complete the grid
+    const totalDaysDisplayed = days.length;
+    const daysToAdd = 42 - totalDaysDisplayed; // Always show 6 rows (6 * 7 = 42)
+    
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextMonthYear = month === 11 ? year + 1 : year;
+    
+    for (let i = 1; i <= daysToAdd; i++) {
+      days.push({
+        date: new Date(nextMonthYear, nextMonth, i),
+        isCurrentMonth: false
+      });
+    }
+    
+    return days;
   };
 
   // Get tasks for a specific date
@@ -207,8 +81,21 @@ const Calendar = () => {
     });
   };
 
+  // Check if a date has tasks
+  const hasTasksOnDate = (date: Date) => {
+    return getTasksForDate(date).length > 0;
+  };
+
+  // Handle date selection
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+  };
+
+  // Get tasks for selected date
+  const tasksForSelectedDate = getTasksForDate(selectedDate);
+
   // TaskCard component
-  const TaskCard = ({ task, compact = false }: { task: Task, compact?: boolean }) => {
+  const TaskCard = ({ task }: { task: Task }) => {
     let bgColor = 'bg-primary/10';
     
     if (task.category === 'Work') bgColor = 'bg-blue-100 dark:bg-blue-900/30';
@@ -222,43 +109,96 @@ const Calendar = () => {
     
     return (
       <div 
-        className={`${bgColor} p-2 rounded-lg border mb-2 ${
+        className={`${bgColor} p-3 rounded-lg border mb-2 ${
           task.completed ? 'opacity-50' : ''
-        } ${compact ? 'text-xs p-1' : ''}`}
+        }`}
       >
-        <div className="font-medium truncate">{task.title}</div>
-        {timeDisplay && (
-          <div className="text-xs opacity-70">{timeDisplay}</div>
+        <div className="font-medium">{task.title}</div>
+        {task.description && (
+          <div className="text-sm mt-1 line-clamp-2">{task.description}</div>
         )}
+        {timeDisplay && (
+          <div className="text-xs mt-1 opacity-70">{timeDisplay}</div>
+        )}
+        <div className="text-xs mt-1 opacity-70">{task.category} · {task.priority} Priority</div>
       </div>
     );
   };
 
+  // Calendar grid
+  const calendarDays = generateMonthView();
+
   return (
     <div className="px-2 pb-16 md:px-4 md:pb-0 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">{format(currentDate, 'PPP')}</h1>
+        <h1 className="text-xl font-bold">{format(currentDate, 'MMMM yyyy')}</h1>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={goToPrevious}>
+          <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={goToNext}>
+          <Button variant="outline" size="icon" onClick={goToNextMonth}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
       
-      <Tabs defaultValue="month" className="mb-4" onValueChange={(value) => setView(value as any)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="month">Month</TabsTrigger>
-          <TabsTrigger value="week">Week</TabsTrigger>
-          <TabsTrigger value="day">Day</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="mb-6">
+        {/* Calendar days of week header */}
+        <div className="grid grid-cols-7 text-center mb-1">
+          <div className="text-xs md:text-sm font-medium">Mon</div>
+          <div className="text-xs md:text-sm font-medium">Tue</div>
+          <div className="text-xs md:text-sm font-medium">Wed</div>
+          <div className="text-xs md:text-sm font-medium">Thu</div>
+          <div className="text-xs md:text-sm font-medium">Fri</div>
+          <div className="text-xs md:text-sm font-medium">Sat</div>
+          <div className="text-xs md:text-sm font-medium">Sun</div>
+        </div>
+        
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7 gap-1 mb-6">
+          {calendarDays.map((day, index) => {
+            const isToday = isSameDay(day.date, new Date());
+            const isSelected = isSameDay(day.date, selectedDate);
+            const hasTasks = hasTasksOnDate(day.date);
+            
+            return (
+              <button
+                key={index}
+                onClick={() => handleDateClick(day.date)}
+                className={`aspect-square flex flex-col items-center justify-center relative rounded-md transition-colors
+                  ${!day.isCurrentMonth ? 'opacity-40' : ''}
+                  ${isToday ? 'bg-primary/20' : ''}
+                  ${isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+                `}
+              >
+                <span className="text-sm md:text-base">{format(day.date, 'd')}</span>
+                {hasTasks && (
+                  <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-primary"></span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       
-      {view === 'month' && generateMonthView()}
-      {view === 'week' && generateWeekView()}
-      {view === 'day' && generateDayView()}
+      {/* Selected date tasks */}
+      <div className="pb-6">
+        <div className="text-base font-medium mb-3">
+          {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+        </div>
+        
+        <div className="space-y-2">
+          {tasksForSelectedDate.length > 0 ? (
+            tasksForSelectedDate.map((task) => (
+              <TaskCard key={task.id} task={task} />
+            ))
+          ) : (
+            <div className="text-center p-8 text-muted-foreground bg-muted/50 rounded-lg">
+              No tasks scheduled for this day
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
