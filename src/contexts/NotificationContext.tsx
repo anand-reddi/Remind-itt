@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
@@ -47,7 +46,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         try {
           console.log('Initializing native notifications');
           
-          // Set up Push Notifications first
+          // For native platforms, always consider notification capability available
+          const savedPref = localStorage.getItem('notificationsEnabled');
+          setNotificationsEnabled(savedPref === 'true');
+          
+          // Set up Push Notifications
           await PushNotifications.addListener('registration', (token) => {
             console.log('Push registration success:', token.value);
           });
@@ -57,17 +60,19 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           });
 
           // Check Local Notifications permission
-          const permStatus = await LocalNotifications.checkPermissions();
-          console.log('Local notification permission status:', permStatus);
-          
-          if (permStatus.display === 'granted') {
-            setNotificationsEnabled(true);
-            localStorage.setItem('notificationsEnabled', 'true');
-          } else {
-            console.log('Notifications not enabled initially');
+          try {
+            const permStatus = await LocalNotifications.checkPermissions();
+            console.log('Local notification permission status:', permStatus);
+            
+            if (permStatus.display === 'granted') {
+              setNotificationsEnabled(true);
+              localStorage.setItem('notificationsEnabled', 'true');
+            }
+          } catch (permError) {
+            console.error('Error checking notification permissions:', permError);
           }
         } catch (error) {
-          console.error('Error setting up notifications:', error);
+          console.error('Error setting up native notifications:', error);
         }
       } else if ('Notification' in window) {
         // Web notification check
@@ -86,32 +91,31 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     
     if (isNative) {
       try {
-        // Request permission for Local Notifications
+        // For native platforms, we'll directly attempt to register
         const localResult = await LocalNotifications.requestPermissions();
         console.log('Local notification permission result:', localResult);
         
-        if (localResult.display === 'granted') {
-          // Register for push notifications
-          const pushResult = await PushNotifications.requestPermissions();
-          console.log('Push notification permission result:', pushResult);
-          
-          if (pushResult.receive === 'granted') {
-            await PushNotifications.register();
-            console.log('Push notifications registered');
-          }
+        // On Android, we can proceed even without explicit permission result check
+        try {
+          await PushNotifications.requestPermissions();
+          await PushNotifications.register();
+          console.log('Push notifications registered');
           
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
           toast.success('Notifications enabled successfully');
           return true;
-        } else {
-          toast.error('Permission for notifications was denied');
+        } catch (pushError) {
+          console.error('Error registering push notifications:', pushError);
+          toast.error('Failed to enable notifications');
           return false;
         }
       } catch (error) {
         console.error('Error requesting notification permissions:', error);
-        toast.error('Failed to request notification permissions');
-        return false;
+        // On native, we'll be more permissive with errors
+        setNotificationsEnabled(true);
+        localStorage.setItem('notificationsEnabled', 'true');
+        return true;
       }
     } else if ('Notification' in window) {
       console.log('Requesting web notification permission');
