@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DailyTasks } from './DailyTasks';
 import { useTasks } from '@/contexts/TaskContext';
@@ -21,15 +20,7 @@ export function Dashboard() {
     if (incompleteTasks.length > 5) {
       setShowAiSuggestion(true);
     }
-    
-    // Show daily summary notification
-    if (incompleteTasks.length > 0) {
-      showNotification(
-        "Daily Task Summary", 
-        `You have ${incompleteTasks.length} task${incompleteTasks.length !== 1 ? 's' : ''} scheduled for today.`
-      );
-    }
-  }, [getTodaysTasks, showNotification]);
+  }, [getTodaysTasks]);
 
   const handleRescheduleSuggestion = () => {
     // In a real implementation, this would open a dialog to help reschedule tasks

@@ -1,4 +1,3 @@
-
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
-  const { notificationsEnabled, toggleNotifications } = useNotifications();
+  const { notificationsEnabled, toggleNotifications, sendTestNotification } = useNotifications();
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
@@ -59,6 +58,21 @@ const Settings = () => {
                 <Label htmlFor="daily-summary">Daily Summary</Label>
                 <Switch id="daily-summary" defaultChecked />
               </div>
+
+              {notificationsEnabled && (
+                <div className="pt-4">
+                  <Button 
+                    onClick={() => sendTestNotification()} 
+                    variant="secondary" 
+                    className="w-full"
+                  >
+                    Send Test Notification
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Use this button to test if notifications are working properly
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

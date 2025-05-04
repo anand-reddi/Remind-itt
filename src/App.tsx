@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import AddTask from "./pages/AddTask";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Capacitor } from '@capacitor/core';
+import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
 
@@ -40,33 +40,35 @@ if (Capacitor.getPlatform() === 'web' && 'serviceWorker' in navigator) {
   });
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TaskProvider>
-        <QuoteProvider>
-          <NotificationProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route element={<Layout />}>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/calendar" element={<Calendar />} />
-                    <Route path="/recent" element={<Recent />} />
-                    <Route path="/add" element={<AddTask />} />
-                    <Route path="/settings" element={<Settings />} />
-                  </Route>
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </NotificationProvider>
-        </QuoteProvider>
-      </TaskProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TaskProvider>
+          <QuoteProvider>
+            <NotificationProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route element={<Layout />}>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/calendar" element={<Calendar />} />
+                      <Route path="/recent" element={<Recent />} />
+                      <Route path="/add" element={<AddTask />} />
+                      <Route path="/settings" element={<Settings />} />
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </NotificationProvider>
+          </QuoteProvider>
+        </TaskProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

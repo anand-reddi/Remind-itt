@@ -4,12 +4,14 @@ import { toast } from '@/components/ui/sonner';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+// import { import as importCapacitorApp } from '@capacitor/app';
 
 interface NotificationContextType {
   notificationsEnabled: boolean;
   requestNotificationPermission: () => Promise<boolean>;
   showNotification: (title: string, body: string, priority?: TaskPriority) => void;
   toggleNotifications: () => void;
+  sendTestNotification: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -40,17 +42,27 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   }, []);
 
+  // Debug notification capabilities
   useEffect(() => {
-    const initNotifications = async () => {
+    if (isNative) {
+      console.log('Checking notification capabilities on native platform');
+      
+      // Capacitor capabilities logging
+      const cap = Capacitor.isPluginAvailable('LocalNotifications');
+      console.log('LocalNotifications plugin available:', cap);
+      
+      const push = Capacitor.isPluginAvailable('PushNotifications');
+      console.log('PushNotifications plugin available:', push);
+    }
+  }, [isNative]);
+
+  useEffect(() => {
+    const setupNativeNotifications = async () => {
       if (isNative) {
         try {
-          console.log('Initializing native notifications');
+          console.log('Setting up native notifications handlers');
           
-          // For native platforms, always consider notification capability available
-          const savedPref = localStorage.getItem('notificationsEnabled');
-          setNotificationsEnabled(savedPref === 'true');
-          
-          // Set up Push Notifications
+          // Register push notification handlers without requesting permissions yet
           await PushNotifications.addListener('registration', (token) => {
             console.log('Push registration success:', token.value);
           });
@@ -58,32 +70,38 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           await PushNotifications.addListener('registrationError', (err) => {
             console.error('Push registration failed:', err.error);
           });
-
-          // Check Local Notifications permission
-          try {
-            const permStatus = await LocalNotifications.checkPermissions();
-            console.log('Local notification permission status:', permStatus);
-            
-            if (permStatus.display === 'granted') {
-              setNotificationsEnabled(true);
-              localStorage.setItem('notificationsEnabled', 'true');
+          
+          await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            console.log('Push notification received:', notification);
+          });
+          
+          // Add local notification handlers
+          await LocalNotifications.addListener('localNotificationReceived', (notification) => {
+            console.log('Local notification received:', notification);
+          });
+          
+          // Check if notifications were previously enabled
+          const savedPref = localStorage.getItem('notificationsEnabled');
+          if (savedPref === 'true') {
+            try {
+              // Just check permission without requesting
+              const permStatus = await LocalNotifications.checkPermissions();
+              console.log('Local notification permission status:', permStatus);
+              
+              if (permStatus.display === 'granted') {
+                setNotificationsEnabled(true);
+              }
+            } catch (permError) {
+              console.error('Error checking notification permissions:', permError);
             }
-          } catch (permError) {
-            console.error('Error checking notification permissions:', permError);
           }
         } catch (error) {
-          console.error('Error setting up native notifications:', error);
-        }
-      } else if ('Notification' in window) {
-        // Web notification check
-        console.log('Checking web notification permission:', Notification.permission);
-        if (Notification.permission === 'granted') {
-          setNotificationsEnabled(localStorage.getItem('notificationsEnabled') === 'true');
+          console.error('Error setting up native notification handlers:', error);
         }
       }
     };
     
-    initNotifications();
+    setupNativeNotifications();
   }, [isNative]);
 
   const requestNotificationPermission = async (): Promise<boolean> => {
@@ -91,31 +109,43 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     
     if (isNative) {
       try {
-        // For native platforms, we'll directly attempt to register
+        // First request local notification permission
+        console.log('Requesting local notifications permission');
         const localResult = await LocalNotifications.requestPermissions();
         console.log('Local notification permission result:', localResult);
         
-        // On Android, we can proceed even without explicit permission result check
-        try {
-          await PushNotifications.requestPermissions();
-          await PushNotifications.register();
-          console.log('Push notifications registered');
-          
-          setNotificationsEnabled(true);
-          localStorage.setItem('notificationsEnabled', 'true');
-          toast.success('Notifications enabled successfully');
-          return true;
-        } catch (pushError) {
-          console.error('Error registering push notifications:', pushError);
-          toast.error('Failed to enable notifications');
+        if (localResult.display !== 'denied') {
+          try {
+            // Try push notifications, but don't fail if this doesn't work
+            console.log('Requesting push notifications permission');
+            try {
+              await PushNotifications.requestPermissions();
+              await PushNotifications.register();
+              console.log('Push notifications registered');
+            } catch (pushError) {
+              console.error('Error registering push notifications (continuing anyway):', pushError);
+            }
+            
+            setNotificationsEnabled(true);
+            localStorage.setItem('notificationsEnabled', 'true');
+            toast.success('Notifications enabled successfully');
+            return true;
+          } catch (error) {
+            console.error('Error during notification setup:', error);
+            // Continue anyway with local notifications
+            setNotificationsEnabled(true);
+            localStorage.setItem('notificationsEnabled', 'true');
+            toast.success('Local notifications enabled');
+            return true;
+          }
+        } else {
+          toast.error('Permission for notifications was denied');
           return false;
         }
       } catch (error) {
         console.error('Error requesting notification permissions:', error);
-        // On native, we'll be more permissive with errors
-        setNotificationsEnabled(true);
-        localStorage.setItem('notificationsEnabled', 'true');
-        return true;
+        toast.error('Failed to enable notifications');
+        return false;
       }
     } else if ('Notification' in window) {
       console.log('Requesting web notification permission');
@@ -147,7 +177,33 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       toast.error('Notifications are not supported on this platform');
       return false;
     }
-    return false;
+  };
+
+  const sendTestNotification = async () => {
+    if (isNative) {
+      try {
+        console.log('Sending test notification with default system sound');
+        
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: 'Test Notification',
+              body: 'This is a test notification with sound',
+              id: Math.floor(Math.random() * 100000),
+              sound: 'default',
+              smallIcon: 'ic_stat_remind_itt',
+              iconColor: '#4f46e5',
+              channelId: 'remind-itt-notifications',
+            }
+          ]
+        });
+        console.log('Test notification sent successfully');
+        toast.success('Test notification sent with sound');
+      } catch (error) {
+        console.error('Failed to send test notification:', error);
+        toast.error('Failed to send test notification');
+      }
+    }
   };
 
   const showNotification = async (title: string, body: string, priority?: TaskPriority) => {
@@ -156,23 +212,40 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     if (isNative) {
       try {
+        // Create a unique ID for the notification
+        const notificationId = Math.floor(Math.random() * 100000);
+        
+        console.log(`Sending immediate notification #${notificationId}`);
+        
+        // For immediate notification with system default sound
         await LocalNotifications.schedule({
           notifications: [
             {
               title,
               body,
-              id: Date.now(),
-              schedule: { at: new Date() },
-              sound: priority === 'High' ? 'beep.wav' : undefined,
+              id: notificationId,
+              sound: 'default',
               smallIcon: 'ic_stat_remind_itt',
               iconColor: '#4f46e5',
-              extra: { priority }
+              channelId: 'remind-itt-notifications',
+              ongoing: false,
+              autoCancel: true
             },
           ],
         });
-        console.log('Native notification scheduled');
+        console.log(`Native notification #${notificationId} sent successfully`);
       } catch (error) {
-        console.error('Failed to schedule native notification:', error);
+        console.error('Failed to send notification:', error);
+        
+        // Fallback to toast
+        try {
+          toast.info(`${title}: ${body}`, {
+            duration: 5000,
+            important: priority === 'High'
+          });
+        } catch (fallbackError) {
+          console.error('Even fallback toast notification failed:', fallbackError);
+        }
       }
     } else if ('Notification' in window && Notification.permission === 'granted') {
       const options = {
@@ -207,9 +280,100 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
+        // Send an immediate test notification
         setTimeout(() => {
-          showNotification('Notifications Enabled', 'You will now receive task reminders');
+          sendTestNotification();
         }, 1000);
+      }
+    }
+  };
+
+  const scheduleAllTaskNotifications = async () => {
+    console.log('Scheduling all task notifications');
+    
+    try {
+      // First cancel any existing notifications
+      await LocalNotifications.cancel({ notifications: [] });
+      
+      const allTasks = getTodaysTasks();
+      const incompleteTasks = allTasks.filter(task => !task.completed && task.startTime);
+      
+      if (incompleteTasks.length === 0) {
+        console.log('No incomplete tasks to schedule notifications for');
+        return;
+      }
+      
+      console.log(`Found ${incompleteTasks.length} task(s) to schedule notifications for`);
+      
+      // Get current time for comparison
+      const now = new Date();
+      
+      // Prepare notifications array
+      const notifications = [];
+      
+      for (const task of incompleteTasks) {
+        if (!task.startTime) continue;
+        
+        const [hours, minutes] = task.startTime.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) continue;
+        
+        // Create task time - set seconds and milliseconds to exactly 0 for precision
+        const taskTime = new Date();
+        taskTime.setHours(hours);
+        taskTime.setMinutes(minutes);
+        taskTime.setSeconds(0);
+        taskTime.setMilliseconds(0);
+        
+        // Apply a compensation offset to account for system delays (subtracting 8 seconds)
+        taskTime.setSeconds(taskTime.getSeconds() - 8);
+        
+        // Only schedule if it's in the future
+        if (taskTime > now) {
+          console.log(`Scheduling task "${task.title}" for ${taskTime.toLocaleTimeString()}`);
+          
+          notifications.push({
+            id: parseInt(task.id),
+            title: 'Task Reminder',
+            body: `It's time for: ${task.title}`,
+            schedule: { 
+              at: taskTime, 
+              allowWhileIdle: true 
+            },
+            // Try different sound settings to ensure it works
+            sound: 'default', // Try using 'default' instead of null
+            smallIcon: 'ic_stat_remind_itt',
+            iconColor: '#4f46e5',
+            channelId: 'remind-itt-notifications',
+            ongoing: false,
+            autoCancel: true
+          });
+        } else {
+          console.log(`Skipping past task "${task.title}" scheduled for ${taskTime.toLocaleTimeString()}`);
+        }
+      }
+      
+      if (notifications.length > 0) {
+        console.log(`Scheduling ${notifications.length} notifications with LocalNotifications.schedule`);
+        await LocalNotifications.schedule({ notifications });
+        console.log('Successfully scheduled all task notifications');
+      }
+    } catch (error) {
+      console.error('Error scheduling all task notifications:', error);
+    }
+  };
+
+  const setupNotificationListeners = async () => {
+    if (isNative) {
+      try {
+        await LocalNotifications.addListener('localNotificationReceived', notification => {
+          console.log('Notification received in foreground:', notification);
+        });
+        
+        await LocalNotifications.addListener('localNotificationActionPerformed', notification => {
+          console.log('Notification action performed:', notification);
+        });
+      } catch (error) {
+        console.error('Error setting up notification listeners:', error);
       }
     }
   };
@@ -217,23 +381,70 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!notificationsEnabled) return;
 
-    const checkDueTasks = () => {
-      const now = new Date();
-      const tasks = getTodaysTasks();
-      tasks.forEach(task => {
-        if (!task.completed && task.startTime) {
-          const [h, m] = task.startTime.split(':').map(Number);
-          if (h === now.getHours() && m === now.getMinutes()) {
-            showNotification('Task Reminder', `It's time for: ${task.title}`, task.priority);
-          }
-        }
-      });
+    console.log('Setting up task reminder system');
+
+    // Reschedule all notifications whenever enabled
+    const setupNotifications = async () => {
+      await setupNotificationListeners();
+      await scheduleAllTaskNotifications();
     };
 
-    checkDueTasks();
-    const intervalId = setInterval(checkDueTasks, 30000);
-    return () => clearInterval(intervalId);
-  }, [notificationsEnabled, getTodaysTasks]);
+    setupNotifications();
+
+    // Use more precise timing for the real-time checker
+    const checkDueTasks = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      // Only run a full check at the start of each minute (when seconds are near 0)
+      // This helps ensure we don't miss notifications due to timing issues
+      if (now.getSeconds() <= 3) {
+        console.log(`Checking tasks at exactly ${currentHour}:${currentMinute}`);
+        
+        const tasks = getTodaysTasks();
+        tasks.forEach(task => {
+          if (!task.completed && task.startTime) {
+            const [h, m] = task.startTime.split(':').map(Number);
+            const taskHour = h === undefined ? -1 : h;
+            const taskMinute = m === undefined ? -1 : m;
+            
+            if (taskHour >= 0 && taskMinute >= 0 && 
+                taskHour === currentHour && 
+                taskMinute === currentMinute) {
+              console.log(`Real-time check sending notification for task: ${task.title}`);
+              showNotification('Task Reminder', `It's time for: ${task.title}`, task.priority);
+            }
+          }
+        });
+      }
+    };
+
+    // Check more frequently (every 3 seconds) to ensure we catch the start of minutes
+    const intervalId = setInterval(checkDueTasks, 3000);
+    
+    // Inside the useEffect, remove the Capacitor-specific app state change detection
+    // and rely on the browser-based visibility APIs which work on all platforms
+    const handleAppFocus = () => {
+      console.log('App regained focus, rescheduling notifications');
+      scheduleAllTaskNotifications();
+    };
+    
+    // Add focus listeners - these work on both web and Capacitor
+    window.addEventListener('focus', handleAppFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleAppFocus();
+      }
+    });
+    
+    // Simple cleanup
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleAppFocus);
+      document.removeEventListener('visibilitychange', handleAppFocus);
+    };
+  }, [notificationsEnabled, getTodaysTasks, isNative, showNotification]);
 
   return (
     <NotificationContext.Provider
@@ -242,6 +453,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         requestNotificationPermission,
         showNotification,
         toggleNotifications,
+        sendTestNotification,
       }}
     >
       {children}
@@ -249,7 +461,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   );
 };
 
-export const useNotifications = (): NotificationContextType => {
+export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
     throw new Error('useNotifications must be used within a NotificationProvider');
