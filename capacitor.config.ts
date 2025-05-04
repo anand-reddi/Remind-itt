@@ -6,15 +6,27 @@ const config: CapacitorConfig = {
   appName: 'Remind itt',
   webDir: 'dist',
   server: {
-    url: 'https://c67f43a7-1d9c-4832-a032-7b70a14483fb.lovableproject.com?forceHideBadge=true',
-    cleartext: true
+    androidScheme: 'https',
+    cleartext: true,
+    allowNavigation: ['*']
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 1000,
       backgroundColor: "#ffffff",
       androidScaleType: "CENTER_CROP"
+    },
+    LocalNotifications: {
+      smallIcon: "ic_launcher",
+      iconColor: "#4f46e5",
+      sound: "beep.wav"
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
     }
+  },
+  android: {
+    allowMixedContent: true
   }
 };
 

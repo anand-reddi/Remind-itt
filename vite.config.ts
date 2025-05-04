@@ -31,13 +31,30 @@ export default defineConfig(({ mode }) => ({
             src: "/icon-192x192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any"
           },
           {
             src: "/icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any"
           },
+          {
+            src: "/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable"
+          },
+          {
+            src: "/icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          }
         ],
+      },
+      devOptions: {
+        enabled: true
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
@@ -64,7 +81,9 @@ export default defineConfig(({ mode }) => ({
               }
             }
           }
-        ]
+        ],
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/, /\/admin/]
       }
     }),
   ].filter(Boolean),

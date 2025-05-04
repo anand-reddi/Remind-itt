@@ -1,7 +1,9 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 
 interface NotificationContextType {
@@ -21,18 +23,44 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
+    
+    // Register service worker for web
+    if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator && 'Notification' in window) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(registration => {
+          console.log('ServiceWorker registration successful');
+          setSwRegistration(registration);
+        })
+        .catch(error => {
+          console.error('ServiceWorker registration failed: ', error);
+        });
+    }
   }, []);
 
   useEffect(() => {
     const init = async () => {
       if (isNative) {
         try {
-          await LocalNotifications.requestPermissions();
-          console.log('Capacitor Local Notifications ready');
-          setNotificationsEnabled(true);
-          localStorage.setItem('notificationsEnabled', 'true');
+          // Initialize push notifications
+          await PushNotifications.requestPermissions();
+          
+          // Register for push notifications
+          await PushNotifications.register();
+          
+          // Initialize local notifications
+          const permStatus = await LocalNotifications.requestPermissions();
+          console.log('Local Notifications permission status:', permStatus);
+          
+          if (permStatus.display === 'granted') {
+            setNotificationsEnabled(true);
+            localStorage.setItem('notificationsEnabled', 'true');
+            console.log('Capacitor Local Notifications ready');
+          } else {
+            console.log('Local Notifications permission denied');
+            setNotificationsEnabled(false);
+          }
         } catch (error) {
-          console.error('Local Notification Permission Error', error);
+          console.error('Notification Permission Error', error);
           setNotificationsEnabled(false);
         }
       } else {
@@ -41,13 +69,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         }
       }
     };
+    
     init();
   }, [isNative]);
 
   const requestNotificationPermission = async (): Promise<boolean> => {
     if (isNative) {
       try {
+        // First try Push Notifications for native
+        await PushNotifications.requestPermissions();
+        await PushNotifications.register();
+        
+        // Then try Local Notifications
         const permission = await LocalNotifications.requestPermissions();
+        console.log('Permission request result:', permission);
+        
         if (permission.display === 'granted') {
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
@@ -58,7 +94,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           return false;
         }
       } catch (error) {
-        console.error('Local notification permission error:', error);
+        console.error('Native notification permission error:', error);
+        toast.error('Failed to request notification permissions');
         return false;
       }
     } else if ('Notification' in window) {
@@ -108,7 +145,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               schedule: { at: new Date() }, // show immediately
               sound: priority === 'High' ? 'beep.wav' : undefined, // optional custom sounds
               smallIcon: 'ic_launcher',
-              iconColor: '#0000ff',
+              iconColor: '#4f46e5',
+              extra: { priority }
             },
           ],
         });

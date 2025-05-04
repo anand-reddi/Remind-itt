@@ -11,7 +11,15 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  const data = event.data.json();
+  let data = { title: 'New Notification', body: 'You have a new notification', priority: 'Medium' };
+  
+  try {
+    if (event.data) {
+      data = event.data.json();
+    }
+  } catch (e) {
+    console.error('Error parsing push notification data', e);
+  }
   
   // Default options
   const options = {
@@ -52,6 +60,44 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    clients.openWindow(event.notification.data.url || '/')
+  );
+});
+
+// Add fetch handler to improve offline experience
+self.addEventListener('fetch', (event) => {
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+  
+  event.respondWith(
+    caches.match(event.request)
+      .then(cachedResponse => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        return fetch(event.request)
+          .then(response => {
+            // Clone the response since we're consuming it twice
+            const responseToCache = response.clone();
+            
+            // Don't cache if not a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+            
+            caches.open('v1').then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+            
+            return response;
+          })
+          .catch(error => {
+            console.error('Fetch failed:', error);
+            // Fallback to whatever is appropriate for your app
+          });
+      })
   );
 });
