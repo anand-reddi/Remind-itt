@@ -11,16 +11,6 @@ const config: CapacitorConfig = {
     allowNavigation: ['*']
   },
   plugins: {
-    SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: true,
-      backgroundColor: "#ffffff", 
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
-      showSpinner: false,
-      splashFullScreen: true,
-      splashImmersive: true
-    },
     LocalNotifications: {
       smallIcon: "ic_stat_remind_itt",
       iconColor: "#4f46e5",
@@ -31,7 +21,8 @@ const config: CapacitorConfig = {
     }
   },
   android: {
-    allowMixedContent: true
+    allowMixedContent: true,
+    webContentsDebuggingEnabled: true
   }
 };
 

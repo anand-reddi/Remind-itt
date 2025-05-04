@@ -64,64 +64,32 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Cache name for app shell resources
-const CACHE_NAME = 'remind-itt-v1';
-
-// Add fetch handler for improved offline experience
+// Handle fetch events for network requests
 self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
   
-  // Handle app shell caching for offline support
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        return fetch(event.request)
+    fetch(event.request)
+      .catch(() => {
+        return caches.match(event.request)
           .then(response => {
-            // Clone the response since we're consuming it twice
-            const responseToCache = response.clone();
-            
-            // Don't cache if not a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
+            if (response) {
               return response;
             }
             
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-            
-            return response;
-          })
-          .catch(error => {
-            console.error('Fetch failed:', error);
-            // Return a basic offline page for HTML requests
-            if (event.request.headers.get('Accept').includes('text/html')) {
-              return caches.match('/');
+            // For HTML requests, return the index page for offline navigation
+            if (event.request.headers.get('accept').includes('text/html')) {
+              return caches.match('/index.html');
             }
+            
+            return new Response('Network error', {
+              status: 408,
+              headers: { 'Content-Type': 'text/plain' }
+            });
           });
       })
-  );
-});
-
-// Clean up old caches during activation
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
   );
 });

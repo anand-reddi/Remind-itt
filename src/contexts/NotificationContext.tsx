@@ -22,10 +22,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const [isNative, setIsNative] = useState<boolean>(false);
 
   useEffect(() => {
-    setIsNative(Capacitor.isNativePlatform());
+    const platform = Capacitor.getPlatform();
+    setIsNative(platform === 'android' || platform === 'ios');
+    
+    console.log('Platform detected:', platform, 'isNative:', platform === 'android' || platform === 'ios');
     
     // Register service worker for web
-    if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator && 'Notification' in window) {
+    if (platform === 'web' && 'serviceWorker' in navigator && 'Notification' in window) {
+      console.log('Setting up web service worker');
       navigator.serviceWorker.register('/service-worker.js')
         .then(registration => {
           console.log('ServiceWorker registration successful');
@@ -38,50 +42,62 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    const init = async () => {
+    const initNotifications = async () => {
       if (isNative) {
         try {
-          // Initialize capabilities check for notifications
-          const hasPermission = await LocalNotifications.checkPermissions();
-          console.log('Initial notification permission status:', hasPermission);
+          console.log('Initializing native notifications');
           
-          if (hasPermission.display === 'granted') {
+          // Set up Push Notifications first
+          await PushNotifications.addListener('registration', (token) => {
+            console.log('Push registration success:', token.value);
+          });
+          
+          await PushNotifications.addListener('registrationError', (err) => {
+            console.error('Push registration failed:', err.error);
+          });
+
+          // Check Local Notifications permission
+          const permStatus = await LocalNotifications.checkPermissions();
+          console.log('Local notification permission status:', permStatus);
+          
+          if (permStatus.display === 'granted') {
             setNotificationsEnabled(true);
             localStorage.setItem('notificationsEnabled', 'true');
           } else {
             console.log('Notifications not enabled initially');
           }
         } catch (error) {
-          console.error('Error checking notification permissions:', error);
+          console.error('Error setting up notifications:', error);
         }
-      } else {
+      } else if ('Notification' in window) {
         // Web notification check
-        if ('Notification' in window && Notification.permission === 'granted') {
+        console.log('Checking web notification permission:', Notification.permission);
+        if (Notification.permission === 'granted') {
           setNotificationsEnabled(localStorage.getItem('notificationsEnabled') === 'true');
         }
       }
     };
     
-    init();
+    initNotifications();
   }, [isNative]);
 
   const requestNotificationPermission = async (): Promise<boolean> => {
+    console.log('Requesting notification permission, isNative:', isNative);
+    
     if (isNative) {
       try {
-        console.log('Requesting native notification permissions');
-        
         // Request permission for Local Notifications
-        const permission = await LocalNotifications.requestPermissions();
-        console.log('Local Notifications permission result:', permission);
+        const localResult = await LocalNotifications.requestPermissions();
+        console.log('Local notification permission result:', localResult);
         
-        if (permission.display === 'granted') {
-          // Also try to register for push notifications if needed
-          try {
-            await PushNotifications.requestPermissions();
+        if (localResult.display === 'granted') {
+          // Register for push notifications
+          const pushResult = await PushNotifications.requestPermissions();
+          console.log('Push notification permission result:', pushResult);
+          
+          if (pushResult.receive === 'granted') {
             await PushNotifications.register();
-          } catch (pushError) {
-            console.error('Push notification setup failed, continuing with local only:', pushError);
-            // Continue with local notifications even if push fails
+            console.log('Push notifications registered');
           }
           
           setNotificationsEnabled(true);
@@ -93,18 +109,22 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           return false;
         }
       } catch (error) {
-        console.error('Native notification permission error:', error);
+        console.error('Error requesting notification permissions:', error);
         toast.error('Failed to request notification permissions');
         return false;
       }
     } else if ('Notification' in window) {
+      console.log('Requesting web notification permission');
       if (Notification.permission === 'granted') {
         setNotificationsEnabled(true);
         localStorage.setItem('notificationsEnabled', 'true');
         return true;
       }
+      
       try {
         const permission = await Notification.requestPermission();
+        console.log('Web notification permission result:', permission);
+        
         if (permission === 'granted') {
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
@@ -118,20 +138,17 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         console.error('Web requestPermission error:', error);
         return false;
       }
+    } else {
+      console.log('Notifications are not supported on this platform');
+      toast.error('Notifications are not supported on this platform');
+      return false;
     }
-    toast.error('Notifications are not supported on this platform');
     return false;
   };
 
-  const getNotificationOptions = (priority?: TaskPriority) => ({
-    icon: '/icon-192x192.png',
-    vibrate: priority === 'High' ? [200, 100, 200] : [100],
-    badge: '/icon-192x192.png',
-    data: { url: window.location.origin },
-  });
-
   const showNotification = async (title: string, body: string, priority?: TaskPriority) => {
     if (!notificationsEnabled) return;
+    console.log('Showing notification:', title, body, 'priority:', priority, 'isNative:', isNative);
 
     if (isNative) {
       try {
@@ -140,32 +157,45 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             {
               title,
               body,
-              id: Date.now(), // use timestamp as unique id
-              schedule: { at: new Date() }, // show immediately
-              sound: priority === 'High' ? 'beep.wav' : undefined, // optional custom sounds
+              id: Date.now(),
+              schedule: { at: new Date() },
+              sound: priority === 'High' ? 'beep.wav' : undefined,
               smallIcon: 'ic_stat_remind_itt',
               iconColor: '#4f46e5',
               extra: { priority }
             },
           ],
         });
+        console.log('Native notification scheduled');
       } catch (error) {
-        console.error('Local notification schedule error:', error);
+        console.error('Failed to schedule native notification:', error);
       }
     } else if ('Notification' in window && Notification.permission === 'granted') {
-      const options = getNotificationOptions(priority);
-      if (swRegistration) {
-        swRegistration.showNotification(title, { body, ...options }).catch(error => {
-          console.error('ServiceWorker notification error:', error);
-          new Notification(title, { body, ...options });
-        });
-      } else {
-        new Notification(title, { body, ...options });
+      const options = {
+        body,
+        icon: '/icon-192x192.png',
+        vibrate: priority === 'High' ? [200, 100, 200] : [100],
+        badge: '/icon-192x192.png',
+        data: { url: window.location.origin },
+      };
+      
+      try {
+        if (swRegistration) {
+          await swRegistration.showNotification(title, options);
+          console.log('ServiceWorker notification shown');
+        } else {
+          new Notification(title, options);
+          console.log('Standard web notification shown');
+        }
+      } catch (error) {
+        console.error('Failed to show web notification:', error);
       }
     }
   };
 
   const toggleNotifications = async () => {
+    console.log('Toggling notifications, current state:', notificationsEnabled);
+    
     if (notificationsEnabled) {
       setNotificationsEnabled(false);
       localStorage.setItem('notificationsEnabled', 'false');
@@ -199,7 +229,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     checkDueTasks();
     const intervalId = setInterval(checkDueTasks, 30000);
     return () => clearInterval(intervalId);
-  }, [notificationsEnabled, getTodaysTasks, isNative]);
+  }, [notificationsEnabled, getTodaysTasks]);
 
   return (
     <NotificationContext.Provider
