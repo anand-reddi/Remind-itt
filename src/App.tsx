@@ -15,11 +15,12 @@ import Recent from "./pages/Recent";
 import AddTask from "./pages/AddTask";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { Capacitor } from '@capacitor/core';
 
 const queryClient = new QueryClient();
 
-// Register service worker
-if ('serviceWorker' in navigator) {
+// Only register service worker for web platform
+if (Capacitor.getPlatform() === 'web' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
       .then(registration => {
@@ -31,7 +32,6 @@ if ('serviceWorker' in navigator) {
         // Set up regular checks for updates
         setInterval(() => {
           registration.update();
-          console.log('Checking for service worker updates...');
         }, 60 * 60 * 1000); // Check every hour
       })
       .catch(error => {
