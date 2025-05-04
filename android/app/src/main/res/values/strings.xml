@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Remind itt</string>
+    <string name="title_activity_main">Remind itt</string>
+    <string name="package_name">app.lovable.c67f43a71d9c4832a0327b70a14483fb</string>
+    <string name="custom_url_scheme">app.lovable.c67f43a71d9c4832a0327b70a14483fb</string>
+</resources>
