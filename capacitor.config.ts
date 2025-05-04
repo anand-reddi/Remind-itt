@@ -26,26 +26,13 @@ const config: CapacitorConfig = {
       hideStatusBar: false,
       webContentsDebuggingEnabled: true,
     },
-    SplashScreen: {
-      launchShowDuration: 0,
-      launchAutoHide: true,
-      backgroundColor: "#ffffff",
-      androidSplashResourceName: "splash",
-      showSpinner: false,
-      androidScaleType: "CENTER_CROP",
-      splashFullScreen: true,
-      splashImmersive: true,
-      androidSpinnerStyle: "large",
-    },
   },
   android: {
-    backgroundColor: "#ffffff",
     allowMixedContent: true,
-    captureInput: true,
     webContentsDebuggingEnabled: true,
-  },
-  ios: {
     backgroundColor: "#ffffff",
+    overrideUserAgent: false,
+    captureInput: true,
   },
 };
 
