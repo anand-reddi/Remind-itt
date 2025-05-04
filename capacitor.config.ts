@@ -18,6 +18,13 @@ const config: CapacitorConfig = {
       channelName: "Task Reminders",
       importance: 4,
     },
+    plugins: {
+      SplashScreen: {
+        launchShowDuration: 1000,
+        autoHide: true,
+        backgroundColor: "#ffffffff",
+      },
+    },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
     },
@@ -31,7 +38,6 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
     webContentsDebuggingEnabled: true,
     backgroundColor: "#ffffff",
-    overrideUserAgent: false,
     captureInput: true,
   },
 };
