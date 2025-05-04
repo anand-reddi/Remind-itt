@@ -41,29 +41,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     const init = async () => {
       if (isNative) {
         try {
-          // Initialize push notifications
-          await PushNotifications.requestPermissions();
+          // Initialize capabilities check for notifications
+          const hasPermission = await LocalNotifications.checkPermissions();
+          console.log('Initial notification permission status:', hasPermission);
           
-          // Register for push notifications
-          await PushNotifications.register();
-          
-          // Initialize local notifications
-          const permStatus = await LocalNotifications.requestPermissions();
-          console.log('Local Notifications permission status:', permStatus);
-          
-          if (permStatus.display === 'granted') {
+          if (hasPermission.display === 'granted') {
             setNotificationsEnabled(true);
             localStorage.setItem('notificationsEnabled', 'true');
-            console.log('Capacitor Local Notifications ready');
           } else {
-            console.log('Local Notifications permission denied');
-            setNotificationsEnabled(false);
+            console.log('Notifications not enabled initially');
           }
         } catch (error) {
-          console.error('Notification Permission Error', error);
-          setNotificationsEnabled(false);
+          console.error('Error checking notification permissions:', error);
         }
       } else {
+        // Web notification check
         if ('Notification' in window && Notification.permission === 'granted') {
           setNotificationsEnabled(localStorage.getItem('notificationsEnabled') === 'true');
         }
@@ -76,15 +68,22 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const requestNotificationPermission = async (): Promise<boolean> => {
     if (isNative) {
       try {
-        // First try Push Notifications for native
-        await PushNotifications.requestPermissions();
-        await PushNotifications.register();
+        console.log('Requesting native notification permissions');
         
-        // Then try Local Notifications
+        // Request permission for Local Notifications
         const permission = await LocalNotifications.requestPermissions();
-        console.log('Permission request result:', permission);
+        console.log('Local Notifications permission result:', permission);
         
         if (permission.display === 'granted') {
+          // Also try to register for push notifications if needed
+          try {
+            await PushNotifications.requestPermissions();
+            await PushNotifications.register();
+          } catch (pushError) {
+            console.error('Push notification setup failed, continuing with local only:', pushError);
+            // Continue with local notifications even if push fails
+          }
+          
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
           toast.success('Notifications enabled successfully');
@@ -144,7 +143,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               id: Date.now(), // use timestamp as unique id
               schedule: { at: new Date() }, // show immediately
               sound: priority === 'High' ? 'beep.wav' : undefined, // optional custom sounds
-              smallIcon: 'ic_launcher',
+              smallIcon: 'ic_stat_remind_itt',
               iconColor: '#4f46e5',
               extra: { priority }
             },

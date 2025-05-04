@@ -1,5 +1,5 @@
 
-// Service Worker for handling push notifications
+// Service Worker for handling push notifications and offline functionality
 self.addEventListener('install', (event) => {
   console.log('Service Worker installed');
   self.skipWaiting(); // Force activation for new service worker
@@ -64,13 +64,17 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Add fetch handler to improve offline experience
+// Cache name for app shell resources
+const CACHE_NAME = 'remind-itt-v1';
+
+// Add fetch handler for improved offline experience
 self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
   
+  // Handle app shell caching for offline support
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
@@ -88,7 +92,7 @@ self.addEventListener('fetch', (event) => {
               return response;
             }
             
-            caches.open('v1').then(cache => {
+            caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseToCache);
             });
             
@@ -96,8 +100,28 @@ self.addEventListener('fetch', (event) => {
           })
           .catch(error => {
             console.error('Fetch failed:', error);
-            // Fallback to whatever is appropriate for your app
+            // Return a basic offline page for HTML requests
+            if (event.request.headers.get('Accept').includes('text/html')) {
+              return caches.match('/');
+            }
           });
       })
+  );
+});
+
+// Clean up old caches during activation
+self.addEventListener('activate', (event) => {
+  const cacheWhitelist = [CACHE_NAME];
+
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
   );
 });
