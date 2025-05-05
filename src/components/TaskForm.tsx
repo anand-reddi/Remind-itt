@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   
   const { addTask, updateTask } = useTasks();
   const navigate = useNavigate();
+
+  // Check if form is valid based on required fields
+  const isFormValid = title.trim() !== '' && (mode !== 'schedule' || date !== undefined);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +106,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
         </div>
       </div>
 
-      <div className="flex justify-center space-x-8 my-6 border-t border-b border-gray-200 py-4">
+      <div className="flex justify-center space-x-8 my-6">
         <button
           type="button"
           onClick={() => setMode('save')}
@@ -144,7 +147,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
         </div>
       )}
 
-      <Button type="submit" className="w-full text-2xl font-bold font-caveat">
+      <Button 
+        type="submit" 
+        className="w-full text-2xl font-bold font-caveat"
+        disabled={!isFormValid}
+      >
         {mode === 'save' ? 'Save itt' : 'Remind itt'}
       </Button>
     </form>

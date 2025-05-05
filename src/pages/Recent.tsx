@@ -4,21 +4,34 @@ import { useTasks, TaskCategory, TaskPriority, Task } from '@/contexts/TaskConte
 import { TaskCard } from '@/components/TaskCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Save, CalendarClock } from 'lucide-react';
 
 type FilterOption = 'all' | TaskCategory | TaskPriority;
+type TaskMode = 'saved' | 'scheduled';
 
 const Recent = () => {
   const { tasks } = useTasks();
   const [filterType, setFilterType] = useState<'category' | 'priority'>('category');
   const [filterValue, setFilterValue] = useState<FilterOption>('all');
+  const [taskMode, setTaskMode] = useState<TaskMode>('saved');
   
   // Sort tasks by date (most recent first)
   const sortedTasks = [...tasks].sort((a, b) => {
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
   
+  // Filter tasks based on selected mode
+  const modeTasks = sortedTasks.filter((task) => {
+    if (taskMode === 'saved') {
+      return !task.startTime; // Tasks without start time are considered saved
+    } else {
+      return !!task.startTime; // Tasks with start time are considered scheduled
+    }
+  });
+  
   // Filter tasks based on selected filter
-  const filteredTasks = sortedTasks.filter((task) => {
+  const filteredTasks = modeTasks.filter((task) => {
     if (filterValue === 'all') return true;
     
     if (filterType === 'category') {
@@ -33,6 +46,17 @@ const Recent = () => {
   return (
     <div className="max-w-2xl mx-auto pb-16 md:pb-0 animate-fade-in">
       <h1 className="mb-6 text-2xl font-bold">Recent Tasks</h1>
+      
+      <Tabs defaultValue="saved" className="mb-6">
+        <TabsList className="grid grid-cols-2 mb-4">
+          <TabsTrigger value="saved" onClick={() => setTaskMode('saved')} className="flex items-center gap-2">
+            <Save size={16} /> Saved
+          </TabsTrigger>
+          <TabsTrigger value="scheduled" onClick={() => setTaskMode('scheduled')} className="flex items-center gap-2">
+            <CalendarClock size={16} /> Scheduled
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       
       <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-end">
         <div className="space-y-2 w-full md:w-1/3">
