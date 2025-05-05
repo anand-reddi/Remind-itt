@@ -3,6 +3,7 @@ import React from 'react';
 import { TaskPriority } from '@/contexts/TaskContext';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 
 interface PrioritySelectProps {
   priority: TaskPriority;
@@ -27,26 +28,35 @@ export const PrioritySelect: React.FC<PrioritySelectProps> = ({
       >
         <ToggleGroupItem 
           value="High" 
-          className="flex-1 text-center py-1.5 data-[state=on]:bg-red-100 data-[state=on]:text-red-700" 
+          className="flex-1 text-center py-2 data-[state=on]:bg-red-100 data-[state=on]:text-red-700" 
           aria-label="High priority"
         >
-          High
+          <div className="flex flex-col items-center">
+            <ArrowUp size={20} className="mb-1" />
+            <span className="text-xs">High</span>
+          </div>
         </ToggleGroupItem>
         
         <ToggleGroupItem 
           value="Medium" 
-          className="flex-1 text-center py-1.5 data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700" 
+          className="flex-1 text-center py-2 data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700" 
           aria-label="Medium priority"
         >
-          Medium
+          <div className="flex flex-col items-center">
+            <ArrowRight size={20} className="mb-1" />
+            <span className="text-xs">Medium</span>
+          </div>
         </ToggleGroupItem>
         
         <ToggleGroupItem 
           value="Low" 
-          className="flex-1 text-center py-1.5 data-[state=on]:bg-green-100 data-[state=on]:text-green-700" 
+          className="flex-1 text-center py-2 data-[state=on]:bg-green-100 data-[state=on]:text-green-700" 
           aria-label="Low priority"
         >
-          Low
+          <div className="flex flex-col items-center">
+            <ArrowDown size={20} className="mb-1" />
+            <span className="text-xs">Low</span>
+          </div>
         </ToggleGroupItem>
       </ToggleGroup>
     </div>

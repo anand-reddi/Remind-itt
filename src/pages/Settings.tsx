@@ -1,3 +1,4 @@
+
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
@@ -49,16 +50,6 @@ const Settings = () => {
                 />
               </div>
               
-              <div className="flex items-center justify-between">
-                <Label htmlFor="email-notifications">Email Notifications</Label>
-                <Switch id="email-notifications" />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="daily-summary">Daily Summary</Label>
-                <Switch id="daily-summary" defaultChecked />
-              </div>
-
               {notificationsEnabled && (
                 <div className="pt-4">
                   <Button 

@@ -6,6 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Save, CalendarClock } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { BriefcaseBusiness, User, ShoppingCart, Heart } from 'lucide-react';
+import { ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 
 type FilterOption = 'all' | TaskCategory | TaskPriority;
 type TaskMode = 'saved' | 'scheduled';
@@ -58,8 +61,8 @@ const Recent = () => {
         </TabsList>
       </Tabs>
       
-      <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-end">
-        <div className="space-y-2 w-full md:w-1/3">
+      <div className="mb-6 space-y-4">
+        <div className="space-y-2 w-full">
           <Label htmlFor="filter-type">Filter By</Label>
           <Select
             value={filterType}
@@ -78,34 +81,79 @@ const Recent = () => {
           </Select>
         </div>
         
-        <div className="space-y-2 w-full md:w-2/3">
+        <div className="space-y-2 w-full">
           <Label htmlFor="filter-value">Select {filterType}</Label>
-          <Select
-            value={filterValue}
-            onValueChange={(value) => setFilterValue(value as FilterOption)}
-          >
-            <SelectTrigger id="filter-value" className="w-full">
-              <SelectValue placeholder={`Select ${filterType}`} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              
-              {filterType === 'category' ? (
-                <>
-                  <SelectItem value="Work">Work</SelectItem>
-                  <SelectItem value="Personal">Personal</SelectItem>
-                  <SelectItem value="Shopping">Shopping</SelectItem>
-                  <SelectItem value="Health">Health</SelectItem>
-                </>
-              ) : (
-                <>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="Low">Low</SelectItem>
-                </>
-              )}
-            </SelectContent>
-          </Select>
+          
+          {filterType === 'category' ? (
+            <ToggleGroup 
+              type="single" 
+              value={filterValue}
+              onValueChange={(value) => {
+                if (value) setFilterValue(value as FilterOption);
+              }}
+              className="flex justify-between w-full"
+            >
+              <ToggleGroupItem value="all" className="flex-1 flex flex-col items-center py-2">
+                <span className="text-sm">All</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="Work" className="flex-1 flex flex-col items-center py-2">
+                <BriefcaseBusiness size={18} className="mb-1" />
+                <span className="text-xs">Work</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="Personal" className="flex-1 flex flex-col items-center py-2">
+                <User size={18} className="mb-1" />
+                <span className="text-xs">Personal</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="Shopping" className="flex-1 flex flex-col items-center py-2">
+                <ShoppingCart size={18} className="mb-1" />
+                <span className="text-xs">Shopping</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="Health" className="flex-1 flex flex-col items-center py-2">
+                <Heart size={18} className="mb-1" />
+                <span className="text-xs">Health</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+          ) : (
+            <ToggleGroup 
+              type="single" 
+              value={filterValue}
+              onValueChange={(value) => {
+                if (value) setFilterValue(value as FilterOption);
+              }}
+              className="flex justify-between w-full"
+            >
+              <ToggleGroupItem value="all" className="flex-1 flex flex-col items-center py-2">
+                <span className="text-sm">All</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem 
+                value="High" 
+                className="flex-1 text-center py-2 data-[state=on]:bg-red-100 data-[state=on]:text-red-700"
+              >
+                <div className="flex flex-col items-center">
+                  <ArrowUp size={18} className="mb-1" />
+                  <span className="text-xs">High</span>
+                </div>
+              </ToggleGroupItem>
+              <ToggleGroupItem 
+                value="Medium" 
+                className="flex-1 text-center py-2 data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700"
+              >
+                <div className="flex flex-col items-center">
+                  <ArrowRight size={18} className="mb-1" />
+                  <span className="text-xs">Medium</span>
+                </div>
+              </ToggleGroupItem>
+              <ToggleGroupItem 
+                value="Low" 
+                className="flex-1 text-center py-2 data-[state=on]:bg-green-100 data-[state=on]:text-green-700"
+              >
+                <div className="flex flex-col items-center">
+                  <ArrowDown size={18} className="mb-1" />
+                  <span className="text-xs">Low</span>
+                </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
+          )}
         </div>
       </div>
       
