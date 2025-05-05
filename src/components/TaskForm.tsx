@@ -13,6 +13,7 @@ import { ReminderTime } from './task-form/ReminderTime';
 import { CategorySelect } from './task-form/CategorySelect';
 import { PrioritySelect } from './task-form/PrioritySelect';
 import { RecurrenceSelect } from './task-form/RecurrenceSelect';
+import { Save, CalendarClock } from 'lucide-react';
 
 const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const [title, setTitle] = useState(editTask?.title || '');
@@ -22,6 +23,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const [category, setCategory] = useState<TaskCategory>(editTask?.category || 'Work');
   const [recurrence, setRecurrence] = useState<RecurrencePattern>(editTask?.recurrence || 'none');
   const [priority, setPriority] = useState<TaskPriority>(editTask?.priority || 'Medium');
+  const [mode, setMode] = useState<'save' | 'schedule'>('save');
   
   const { addTask, updateTask } = useTasks();
   const navigate = useNavigate();
@@ -34,7 +36,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       return;
     }
 
-    if (!date) {
+    if (mode === 'schedule' && !date) {
       toast.error('Please select a date');
       return;
     }
@@ -42,7 +44,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
     const taskData = {
       title,
       description,
-      date: date.toISOString(),
+      date: date ? date.toISOString() : new Date().toISOString(),
       startTime: reminderTime,
       endTime: '',
       category,
@@ -73,44 +75,77 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="title">Task Title</Label>
-        <Input 
-          id="title" 
-          placeholder="Enter task title" 
-          value={title} 
-          onChange={(e) => setTitle(e.target.value)} 
-          required 
-        />
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="title">Task Title</Label>
+          <Input 
+            id="title" 
+            placeholder="Enter task title" 
+            value={title} 
+            onChange={(e) => setTitle(e.target.value)} 
+            required 
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="description">Description (Optional)</Label>
+          <Textarea 
+            id="description" 
+            placeholder="Enter task description" 
+            value={description} 
+            onChange={(e) => setDescription(e.target.value)} 
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CategorySelect category={category} onCategoryChange={setCategory} />
+          <PrioritySelect priority={priority} onPriorityChange={setPriority} />
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description (Optional)</Label>
-        <Textarea 
-          id="description" 
-          placeholder="Enter task description" 
-          value={description} 
-          onChange={(e) => setDescription(e.target.value)} 
-        />
+      <div className="flex justify-center space-x-8 my-6 border-t border-b border-gray-200 py-4">
+        <button
+          type="button"
+          onClick={() => setMode('save')}
+          className={`flex flex-col items-center p-3 rounded-lg ${
+            mode === 'save' 
+              ? 'bg-primary/10 text-primary' 
+              : 'text-gray-500 hover:text-primary hover:bg-primary/5'
+          }`}
+        >
+          <Save size={24} strokeWidth={1.5} />
+          <span className="mt-1 text-sm">Save</span>
+        </button>
+        
+        <button
+          type="button"
+          onClick={() => setMode('schedule')}
+          className={`flex flex-col items-center p-3 rounded-lg ${
+            mode === 'schedule' 
+              ? 'bg-primary/10 text-primary' 
+              : 'text-gray-500 hover:text-primary hover:bg-primary/5'
+          }`}
+        >
+          <CalendarClock size={24} strokeWidth={1.5} />
+          <span className="mt-1 text-sm">Schedule</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <DatePicker date={date} onDateChange={setDate} />
-        <CategorySelect category={category} onCategoryChange={setCategory} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ReminderTime 
-          reminderTime={reminderTime} 
-          onReminderTimeChange={setReminderTime} 
-        />
-        <PrioritySelect priority={priority} onPriorityChange={setPriority} />
-      </div>
-
-      <RecurrenceSelect recurrence={recurrence} onRecurrenceChange={setRecurrence} />
+      {mode === 'schedule' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DatePicker date={date} onDateChange={setDate} />
+            <ReminderTime 
+              reminderTime={reminderTime} 
+              onReminderTimeChange={setReminderTime} 
+            />
+          </div>
+          <RecurrenceSelect recurrence={recurrence} onRecurrenceChange={setRecurrence} />
+        </div>
+      )}
 
       <Button type="submit" className="w-full text-2xl font-bold font-caveat">
-        {editTask ? 'Update itt' : 'Remind itt'}
+        {mode === 'save' ? 'Save itt' : 'Remind itt'}
       </Button>
     </form>
   );
