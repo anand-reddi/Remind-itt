@@ -13,6 +13,7 @@ import { ReminderTime } from './task-form/ReminderTime';
 import { CategorySelect } from './task-form/CategorySelect';
 import { PrioritySelect } from './task-form/PrioritySelect';
 import { RecurrenceSelect } from './task-form/RecurrenceSelect';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Save, CalendarClock } from 'lucide-react';
 
 const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
@@ -28,8 +29,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const { addTask, updateTask } = useTasks();
   const navigate = useNavigate();
 
-  // Check if form is valid based on required fields
-  const isFormValid = title.trim() !== '' && (mode !== 'schedule' || date !== undefined);
+  // Check if form is valid based on required fields and mode
+  const isFormValid = 
+    title.trim() !== '' && 
+    (mode !== 'schedule' || (date !== undefined && reminderTime !== ''));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +42,16 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       return;
     }
 
-    if (mode === 'schedule' && !date) {
-      toast.error('Please select a date');
-      return;
+    if (mode === 'schedule') {
+      if (!date) {
+        toast.error('Please select a date');
+        return;
+      }
+      
+      if (!reminderTime) {
+        toast.error('Please select a reminder time');
+        return;
+      }
     }
 
     const taskData = {
@@ -78,6 +88,21 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <Tabs 
+        defaultValue="save" 
+        className="w-full" 
+        onValueChange={(value) => setMode(value as 'save' | 'schedule')}
+      >
+        <TabsList className="grid grid-cols-2 mb-6 w-full">
+          <TabsTrigger value="save" className="flex items-center gap-2">
+            <Save size={16} /> Save Task
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="flex items-center gap-2">
+            <CalendarClock size={16} /> Schedule Task
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="title">Task Title</Label>
@@ -104,34 +129,6 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
           <CategorySelect category={category} onCategoryChange={setCategory} />
           <PrioritySelect priority={priority} onPriorityChange={setPriority} />
         </div>
-      </div>
-
-      <div className="flex justify-center space-x-8 my-6">
-        <button
-          type="button"
-          onClick={() => setMode('save')}
-          className={`flex flex-col items-center p-3 rounded-lg ${
-            mode === 'save' 
-              ? 'bg-primary/10 text-primary' 
-              : 'text-gray-500 hover:text-primary hover:bg-primary/5'
-          }`}
-        >
-          <Save size={24} strokeWidth={1.5} />
-          <span className="mt-1 text-sm">Save</span>
-        </button>
-        
-        <button
-          type="button"
-          onClick={() => setMode('schedule')}
-          className={`flex flex-col items-center p-3 rounded-lg ${
-            mode === 'schedule' 
-              ? 'bg-primary/10 text-primary' 
-              : 'text-gray-500 hover:text-primary hover:bg-primary/5'
-          }`}
-        >
-          <CalendarClock size={24} strokeWidth={1.5} />
-          <span className="mt-1 text-sm">Schedule</span>
-        </button>
       </div>
 
       {mode === 'schedule' && (
