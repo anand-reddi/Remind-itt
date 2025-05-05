@@ -125,7 +125,7 @@ const Recent = () => {
                 className="flex-1 text-center py-2 data-[state=on]:bg-red-100 data-[state=on]:text-red-700"
               >
                 <div className="flex flex-col items-center">
-                  <ArrowUp size={18} className="mb-0.5" />
+                  <ArrowUp size={10} className="mb-0.5" />
                   <span className="text-xs">High</span>
                 </div>
               </ToggleGroupItem>
@@ -134,7 +134,7 @@ const Recent = () => {
                 className="flex-1 text-center py-2 data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700"
               >
                 <div className="flex flex-col items-center">
-                  <ArrowRight size={18} className="mb-0.5" />
+                  <ArrowRight size={10} className="mb-0.5" />
                   <span className="text-xs">Medium</span>
                 </div>
               </ToggleGroupItem>
@@ -143,7 +143,7 @@ const Recent = () => {
                 className="flex-1 text-center py-2 data-[state=on]:bg-green-100 data-[state=on]:text-green-700"
               >
                 <div className="flex flex-col items-center">
-                  <ArrowDown size={18} className="mb-0.5" />
+                  <ArrowDown size={10} className="mb-0.5" />
                   <span className="text-xs">Low</span>
                 </div>
               </ToggleGroupItem>

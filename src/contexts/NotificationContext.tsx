@@ -293,7 +293,17 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     
     try {
       // First cancel any existing notifications
-      await LocalNotifications.cancel({ notifications: [] });
+      try {
+        await LocalNotifications.getPending().then(pending => {
+          if (pending.notifications && pending.notifications.length > 0) {
+            console.log(`Cancelling ${pending.notifications.length} pending notifications`);
+            const ids = pending.notifications.map(n => ({ id: n.id }));
+            LocalNotifications.cancel({ notifications: ids });
+          }
+        });
+      } catch (cancelError) {
+        console.error('Error cancelling previous notifications:', cancelError);
+      }
       
       const allTasks = getTodaysTasks();
       const incompleteTasks = allTasks.filter(task => !task.completed && task.startTime);
@@ -324,23 +334,20 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         taskTime.setSeconds(0);
         taskTime.setMilliseconds(0);
         
-        // Apply a compensation offset to account for system delays (subtracting 8 seconds)
-        taskTime.setSeconds(taskTime.getSeconds() - 8);
-        
         // Only schedule if it's in the future
         if (taskTime > now) {
           console.log(`Scheduling task "${task.title}" for ${taskTime.toLocaleTimeString()}`);
           
           notifications.push({
             id: parseInt(task.id),
-            title: 'Task Reminder',
+            title: task.priority === 'High' ? '⭐ High Priority Task' : 'Task Reminder',
             body: `It's time for: ${task.title}`,
             schedule: { 
-              at: taskTime, 
-              allowWhileIdle: true 
+              at: taskTime,
+              allowWhileIdle: true,
+              exact: true
             },
-            // Try different sound settings to ensure it works
-            sound: 'default', // Try using 'default' instead of null
+            sound: 'default',
             smallIcon: 'ic_stat_remind_itt',
             iconColor: '#4f46e5',
             channelId: 'remind-itt-notifications',
@@ -354,8 +361,29 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       
       if (notifications.length > 0) {
         console.log(`Scheduling ${notifications.length} notifications with LocalNotifications.schedule`);
-        await LocalNotifications.schedule({ notifications });
-        console.log('Successfully scheduled all task notifications');
+        
+        // Schedule notifications in smaller batches to avoid potential issues
+        const batchSize = 10;
+        for (let i = 0; i < notifications.length; i += batchSize) {
+          const batch = notifications.slice(i, i + batchSize);
+          try {
+            await LocalNotifications.schedule({ notifications: batch });
+            console.log(`Successfully scheduled batch of ${batch.length} notifications`);
+          } catch (error) {
+            console.error(`Error scheduling batch ${i/batchSize + 1}:`, error);
+          }
+        }
+        
+        // Verify notifications were scheduled
+        try {
+          const pending = await LocalNotifications.getPending();
+          console.log(`Verified ${pending.notifications.length} pending notifications`);
+          pending.notifications.forEach(n => {
+            console.log(`Scheduled: ID ${n.id} at ${new Date(n.schedule?.at || 0).toLocaleTimeString()}`);
+          });
+        } catch (e) {
+          console.error('Error verifying scheduled notifications:', e);
+        }
       }
     } catch (error) {
       console.error('Error scheduling all task notifications:', error);

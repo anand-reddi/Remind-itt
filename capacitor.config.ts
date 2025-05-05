@@ -16,14 +16,13 @@ const config: CapacitorConfig = {
       sound: "default",
       channelId: "remind-itt-notifications",
       channelName: "Task Reminders",
-      importance: 4,
+      importance: 5,
+      allowBadge: true,
     },
-    plugins: {
-      SplashScreen: {
-        launchShowDuration: 1000,
-        autoHide: true,
-        backgroundColor: "#ffffffff",
-      },
+    SplashScreen: {
+      launchShowDuration: 1000,
+      autoHide: true,
+      backgroundColor: "#ffffffff",
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
@@ -39,6 +38,7 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: true,
     backgroundColor: "#ffffff",
     captureInput: true,
+    useLegacyBridge: true,
   },
 };
 
