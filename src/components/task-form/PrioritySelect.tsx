@@ -32,7 +32,7 @@ export const PrioritySelect: React.FC<PrioritySelectProps> = ({
           aria-label="High priority"
         >
           <div className="flex flex-col items-center">
-            <ArrowUp size={20} className="mb-1" />
+            <ArrowUp size={20} className="mb-0.5" />
             <span className="text-xs">High</span>
           </div>
         </ToggleGroupItem>
@@ -43,7 +43,7 @@ export const PrioritySelect: React.FC<PrioritySelectProps> = ({
           aria-label="Medium priority"
         >
           <div className="flex flex-col items-center">
-            <ArrowRight size={20} className="mb-1" />
+            <ArrowRight size={20} className="mb-0.5" />
             <span className="text-xs">Medium</span>
           </div>
         </ToggleGroupItem>
@@ -54,7 +54,7 @@ export const PrioritySelect: React.FC<PrioritySelectProps> = ({
           aria-label="Low priority"
         >
           <div className="flex flex-col items-center">
-            <ArrowDown size={20} className="mb-1" />
+            <ArrowDown size={20} className="mb-0.5" />
             <span className="text-xs">Low</span>
           </div>
         </ToggleGroupItem>

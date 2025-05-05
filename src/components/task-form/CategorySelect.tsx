@@ -27,22 +27,22 @@ export const CategorySelect: React.FC<CategorySelectProps> = ({
         id="category"
       >
         <ToggleGroupItem value="Work" className="flex-1 flex flex-col items-center py-2" aria-label="Work">
-          <BriefcaseBusiness size={20} className="mb-1" />
+          <BriefcaseBusiness size={24} className="mb-1" />
           <span className="text-sm">Work</span>
         </ToggleGroupItem>
         
         <ToggleGroupItem value="Personal" className="flex-1 flex flex-col items-center py-2" aria-label="Personal">
-          <User size={20} className="mb-1" />
+          <User size={24} className="mb-1" />
           <span className="text-sm">Personal</span>
         </ToggleGroupItem>
         
         <ToggleGroupItem value="Shopping" className="flex-1 flex flex-col items-center py-2" aria-label="Shopping">
-          <ShoppingCart size={20} className="mb-1" />
+          <ShoppingCart size={24} className="mb-1" />
           <span className="text-sm">Shopping</span>
         </ToggleGroupItem>
         
         <ToggleGroupItem value="Health" className="flex-1 flex flex-col items-center py-2" aria-label="Health">
-          <Heart size={20} className="mb-1" />
+          <Heart size={24} className="mb-1" />
           <span className="text-sm">Health</span>
         </ToggleGroupItem>
       </ToggleGroup>

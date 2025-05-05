@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Save, CalendarClock } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { BriefcaseBusiness, User, ShoppingCart, Heart } from 'lucide-react';
 import { ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 
 type FilterOption = 'all' | TaskCategory | TaskPriority;
@@ -93,24 +92,20 @@ const Recent = () => {
               }}
               className="flex justify-between w-full"
             >
-              <ToggleGroupItem value="all" className="flex-1 flex flex-col items-center py-2">
-                <span className="text-sm">All</span>
+              <ToggleGroupItem value="all" className="flex-1 text-center py-2">
+                All
               </ToggleGroupItem>
-              <ToggleGroupItem value="Work" className="flex-1 flex flex-col items-center py-2">
-                <BriefcaseBusiness size={18} className="mb-1" />
-                <span className="text-xs">Work</span>
+              <ToggleGroupItem value="Work" className="flex-1 text-center py-2">
+                Work
               </ToggleGroupItem>
-              <ToggleGroupItem value="Personal" className="flex-1 flex flex-col items-center py-2">
-                <User size={18} className="mb-1" />
-                <span className="text-xs">Personal</span>
+              <ToggleGroupItem value="Personal" className="flex-1 text-center py-2">
+                Personal
               </ToggleGroupItem>
-              <ToggleGroupItem value="Shopping" className="flex-1 flex flex-col items-center py-2">
-                <ShoppingCart size={18} className="mb-1" />
-                <span className="text-xs">Shopping</span>
+              <ToggleGroupItem value="Shopping" className="flex-1 text-center py-2">
+                Shopping
               </ToggleGroupItem>
-              <ToggleGroupItem value="Health" className="flex-1 flex flex-col items-center py-2">
-                <Heart size={18} className="mb-1" />
-                <span className="text-xs">Health</span>
+              <ToggleGroupItem value="Health" className="flex-1 text-center py-2">
+                Health
               </ToggleGroupItem>
             </ToggleGroup>
           ) : (
@@ -122,15 +117,15 @@ const Recent = () => {
               }}
               className="flex justify-between w-full"
             >
-              <ToggleGroupItem value="all" className="flex-1 flex flex-col items-center py-2">
-                <span className="text-sm">All</span>
+              <ToggleGroupItem value="all" className="flex-1 text-center py-2">
+                All
               </ToggleGroupItem>
               <ToggleGroupItem 
                 value="High" 
                 className="flex-1 text-center py-2 data-[state=on]:bg-red-100 data-[state=on]:text-red-700"
               >
                 <div className="flex flex-col items-center">
-                  <ArrowUp size={18} className="mb-1" />
+                  <ArrowUp size={18} className="mb-0.5" />
                   <span className="text-xs">High</span>
                 </div>
               </ToggleGroupItem>
@@ -139,7 +134,7 @@ const Recent = () => {
                 className="flex-1 text-center py-2 data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700"
               >
                 <div className="flex flex-col items-center">
-                  <ArrowRight size={18} className="mb-1" />
+                  <ArrowRight size={18} className="mb-0.5" />
                   <span className="text-xs">Medium</span>
                 </div>
               </ToggleGroupItem>
@@ -148,7 +143,7 @@ const Recent = () => {
                 className="flex-1 text-center py-2 data-[state=on]:bg-green-100 data-[state=on]:text-green-700"
               >
                 <div className="flex flex-col items-center">
-                  <ArrowDown size={18} className="mb-1" />
+                  <ArrowDown size={18} className="mb-0.5" />
                   <span className="text-xs">Low</span>
                 </div>
               </ToggleGroupItem>
