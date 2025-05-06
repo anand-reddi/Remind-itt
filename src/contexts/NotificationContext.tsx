@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 interface NotificationContextType {
   notificationsEnabled: boolean;
@@ -19,6 +20,7 @@ interface NotificationContextType {
   sendTestNotification: () => Promise<void>;
   rescheduleAllNotifications: () => Promise<void>;
   cancelNotificationForTask: (taskId: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -54,7 +56,44 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           console.error('ServiceWorker registration failed: ', error);
         });
     }
+
+    // Set up app state change listeners for native platforms
+    if (platform === 'android' || platform === 'ios') {
+      try {
+        App.addListener('appStateChange', ({ isActive }) => {
+          console.log('App state changed. Is active:', isActive);
+          if (isActive) {
+            console.log('App became active, checking notifications');
+            checkNotificationPermissions();
+          }
+        });
+        console.log('App state listeners registered');
+      } catch (error) {
+        console.error('Failed to register app state listeners:', error);
+      }
+    }
   }, []);
+
+  // Check notification permissions without requesting them
+  const checkNotificationPermissions = async () => {
+    if (!isNative) return false;
+    
+    try {
+      const permStatus = await LocalNotifications.checkPermissions();
+      console.log('Local notification permission status:', permStatus);
+      
+      if (permStatus.display === 'granted') {
+        setNotificationsEnabled(true);
+        return true;
+      } else {
+        console.log('Notification permissions not granted yet');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+      return false;
+    }
+  };
 
   // Debug notification capabilities
   useEffect(() => {
@@ -67,6 +106,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       
       const push = Capacitor.isPluginAvailable('PushNotifications');
       console.log('PushNotifications plugin available:', push);
+
+      const appPlugin = Capacitor.isPluginAvailable('App');
+      console.log('App plugin available:', appPlugin);
     }
   }, [isNative]);
 
@@ -95,16 +137,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           // Check if notifications were previously enabled
           const savedPref = localStorage.getItem('notificationsEnabled');
           if (savedPref === 'true') {
-            try {
-              // Just check permission without requesting
-              const permStatus = await LocalNotifications.checkPermissions();
-              console.log('Local notification permission status:', permStatus);
-              
-              if (permStatus.display === 'granted') {
-                setNotificationsEnabled(true);
-              }
-            } catch (permError) {
-              console.error('Error checking notification permissions:', permError);
+            const hasPermission = await checkNotificationPermissions();
+            if (hasPermission) {
+              console.log('Notifications were previously enabled and permission is granted');
+              setNotificationsEnabled(true);
             }
           }
         } catch (error) {
@@ -116,12 +152,24 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     setupNativeNotifications();
   }, [isNative]);
 
+  // Method to request notification permission with enhanced error handling
   const requestNotificationPermission = async (): Promise<boolean> => {
     console.log('Requesting notification permission, isNative:', isNative);
     
     if (isNative) {
       try {
-        // First request local notification permission
+        // First check existing permissions
+        const currentPermissions = await LocalNotifications.checkPermissions();
+        console.log('Current permission status:', currentPermissions);
+        
+        if (currentPermissions.display === 'granted') {
+          console.log('Permissions already granted');
+          setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
+          return true;
+        }
+        
+        // Request local notification permission
         console.log('Requesting local notifications permission');
         const localResult = await LocalNotifications.requestPermissions();
         console.log('Local notification permission result:', localResult);
@@ -191,9 +239,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  // Improved test notification with better error handling
   const sendTestNotification = async () => {
     if (isNative) {
       try {
+        // First check if we have permission
+        const permStatus = await LocalNotifications.checkPermissions();
+        if (permStatus.display !== 'granted') {
+          console.log('No permission to send notifications, requesting...');
+          const requested = await requestNotificationPermission();
+          if (!requested) {
+            toast.error('Unable to send test notification - permission denied');
+            return;
+          }
+        }
+        
         console.log('Sending test notification with default system sound');
         
         await LocalNotifications.schedule({
@@ -206,6 +266,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               smallIcon: 'ic_stat_remind_itt',
               iconColor: '#4f46e5',
               channelId: 'remind-itt-notifications',
+              schedule: { 
+                at: new Date(Date.now() + 1000), // Schedule 1 second in the future
+                allowWhileIdle: true
+              }
             }
           ]
         });
@@ -214,6 +278,38 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       } catch (error) {
         console.error('Failed to send test notification:', error);
         toast.error('Failed to send test notification');
+        
+        // Try a fallback notification without schedule
+        try {
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                title: 'Test Notification (Fallback)',
+                body: 'This is a fallback test notification',
+                id: Math.floor(Math.random() * 100000),
+                sound: 'default',
+                smallIcon: 'ic_stat_remind_itt',
+                iconColor: '#4f46e5',
+                channelId: 'remind-itt-notifications'
+              }
+            ]
+          });
+          console.log('Fallback test notification sent');
+          toast.success('Fallback test notification sent');
+        } catch (fallbackError) {
+          console.error('Fallback notification also failed:', fallbackError);
+        }
+      }
+    } else {
+      // Web notification
+      if ('Notification' in window && Notification.permission === 'granted' && swRegistration) {
+        swRegistration.showNotification('Test Notification', {
+          body: 'This is a test notification',
+          icon: '/icon-192x192.png',
+        });
+        console.log('Web test notification sent');
+      } else {
+        toast.info('Test notification would appear here (web)');
       }
     }
   };
@@ -235,22 +331,34 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     if (isNative) {
       try {
+        // Check permissions first
+        const permStatus = await LocalNotifications.checkPermissions();
+        if (permStatus.display !== 'granted') {
+          console.log('No permission to show notification');
+          toast.info(`${title}: ${body}`, {
+            duration: 5000,
+            important: priority === 'High'
+          });
+          return;
+        }
+        
         console.log(`Sending native notification #${notificationId}`);
         
-        const notificationConfig = {
-          notifications: [
-            {
-              title,
-              body,
-              id: notificationId,
-              sound: useSound ? 'default' : null,
-              smallIcon: 'ic_stat_remind_itt',
-              iconColor: '#4f46e5',
-              channelId: 'remind-itt-notifications',
-              ongoing: false,
-              autoCancel: true
-            },
-          ],
+        const notification = {
+          title,
+          body,
+          id: notificationId,
+          sound: useSound ? 'default' : null,
+          smallIcon: 'ic_stat_remind_itt',
+          iconColor: '#4f46e5',
+          channelId: 'remind-itt-notifications',
+          ongoing: false,
+          autoCancel: true
+        };
+        
+        // Create notification object with consistent type
+        const notificationConfig: any = {
+          notifications: [notification],
         };
         
         // Add schedule if provided
@@ -271,19 +379,30 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         setTimeout(async () => {
           try {
             console.log(`Retrying notification #${notificationId} after failure`);
-            await LocalNotifications.schedule({
-              notifications: [
-                {
-                  title,
-                  body,
-                  id: notificationId,
-                  sound: useSound ? 'default' : null,
-                  smallIcon: 'ic_stat_remind_itt',
-                  iconColor: '#4f46e5',
-                  channelId: 'remind-itt-notifications',
-                }
-              ]
-            });
+            const retryNotification = {
+              title,
+              body,
+              id: notificationId,
+              sound: useSound ? 'default' : null,
+              smallIcon: 'ic_stat_remind_itt',
+              iconColor: '#4f46e5',
+              channelId: 'remind-itt-notifications',
+            };
+            
+            // Create retry notification with consistent type
+            const retryConfig: any = {
+              notifications: [retryNotification],
+            };
+            
+            if (options?.schedule) {
+              retryConfig.notifications[0].schedule = { 
+                at: options.schedule,
+                allowWhileIdle: true,
+                exact: true
+              };
+            }
+            
+            await LocalNotifications.schedule(retryConfig);
             console.log(`Retry for notification #${notificationId} successful`);
           } catch (retryError) {
             console.error('Retry also failed for notification:', retryError);
@@ -297,7 +416,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         }, RETRY_DELAY);
       }
     } else if ('Notification' in window && Notification.permission === 'granted') {
-      const options = {
+      const notifyOptions = {
         body,
         icon: '/icon-192x192.png',
         vibrate: priority === 'High' ? [200, 100, 200] : [100],
@@ -307,10 +426,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       
       try {
         if (swRegistration) {
-          await swRegistration.showNotification(title, options);
+          await swRegistration.showNotification(title, notifyOptions);
           console.log('ServiceWorker notification shown');
         } else {
-          new Notification(title, options);
+          new Notification(title, notifyOptions);
           console.log('Standard web notification shown');
         }
       } catch (error) {
@@ -337,7 +456,31 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
   
-  // New method to cancel a notification for a specific task
+  // Method to clear all notifications
+  const clearAllNotifications = async () => {
+    if (!isNative) return;
+    
+    try {
+      console.log('Clearing all notifications');
+      await LocalNotifications.getPending().then(pending => {
+        if (pending.notifications && pending.notifications.length > 0) {
+          console.log(`Cancelling ${pending.notifications.length} pending notifications`);
+          const ids = pending.notifications.map(n => ({ id: n.id }));
+          LocalNotifications.cancel({ notifications: ids });
+        }
+      });
+      
+      // Also cancel any delivered notifications
+      await LocalNotifications.removeAllDeliveredNotifications();
+      console.log('All delivered notifications removed');
+      
+      toast.success('All notifications cleared');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
+  };
+  
+  // Method to cancel a notification for a specific task
   const cancelNotificationForTask = async (taskId: string) => {
     if (!isNative) return;
     
@@ -368,6 +511,13 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     console.log('Scheduling all task notifications');
     
     try {
+      // Check permissions first
+      const permStatus = await LocalNotifications.checkPermissions();
+      if (permStatus.display !== 'granted') {
+        console.log('No permission to schedule notifications');
+        return;
+      }
+      
       // First cancel any existing notifications
       try {
         await LocalNotifications.getPending().then(pending => {
@@ -634,6 +784,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         sendTestNotification,
         rescheduleAllNotifications,
         cancelNotificationForTask,
+        clearAllNotifications,
       }}
     >
       {children}

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
-  const { notificationsEnabled, toggleNotifications, sendTestNotification } = useNotifications();
+  const { notificationsEnabled, toggleNotifications, sendTestNotification, clearAllNotifications } = useNotifications();
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
@@ -51,7 +51,7 @@ const Settings = () => {
               </div>
               
               {notificationsEnabled && (
-                <div className="pt-4">
+                <div className="pt-4 space-y-4">
                   <Button 
                     onClick={() => sendTestNotification()} 
                     variant="secondary" 
@@ -59,8 +59,16 @@ const Settings = () => {
                   >
                     Send Test Notification
                   </Button>
+                  <Button 
+                    onClick={() => clearAllNotifications()} 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    Clear All Notifications
+                  </Button>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Use this button to test if notifications are working properly
+                    Use these buttons to test if notifications are working properly 
+                    and to clear all active notifications
                   </p>
                 </div>
               )}
