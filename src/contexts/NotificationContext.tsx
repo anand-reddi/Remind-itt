@@ -1,20 +1,34 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
-// import { import as importCapacitorApp } from '@capacitor/app';
 
 interface NotificationContextType {
   notificationsEnabled: boolean;
   requestNotificationPermission: () => Promise<boolean>;
-  showNotification: (title: string, body: string, priority?: TaskPriority) => void;
+  showNotification: (title: string, body: string, options?: {
+    priority?: TaskPriority;
+    id?: number;
+    schedule?: Date;
+    sound?: boolean;
+  }) => void;
   toggleNotifications: () => void;
   sendTestNotification: () => Promise<void>;
+  rescheduleAllNotifications: () => Promise<void>;
+  cancelNotificationForTask: (taskId: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+// Maximum notifications to schedule in a single batch
+const MAX_BATCH_SIZE = 25;
+// Delay for retry in ms (2 seconds)
+const RETRY_DELAY = 2000;
+// Throttle interval for checking due tasks (6 seconds)
+const CHECK_INTERVAL = 6000;
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
@@ -75,10 +89,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             console.log('Push notification received:', notification);
           });
           
-          // Add local notification handlers
-          await LocalNotifications.addListener('localNotificationReceived', (notification) => {
-            console.log('Local notification received:', notification);
-          });
+          // Setup notification listeners
+          setupNotificationListeners();
           
           // Check if notifications were previously enabled
           const savedPref = localStorage.getItem('notificationsEnabled');
@@ -206,25 +218,32 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const showNotification = async (title: string, body: string, priority?: TaskPriority) => {
+  // Enhanced showNotification with options parameter for better flexibility
+  const showNotification = async (title: string, body: string, options?: {
+    priority?: TaskPriority;
+    id?: number;
+    schedule?: Date;
+    sound?: boolean;
+  }) => {
     if (!notificationsEnabled) return;
-    console.log('Showing notification:', title, body, 'priority:', priority, 'isNative:', isNative);
+    
+    const priority = options?.priority || 'Medium';
+    const notificationId = options?.id || Math.floor(Math.random() * 100000);
+    const useSound = options?.sound !== false; // Default to true if not specified
+
+    console.log(`Showing notification: "${title}", priority: ${priority}, id: ${notificationId}`);
 
     if (isNative) {
       try {
-        // Create a unique ID for the notification
-        const notificationId = Math.floor(Math.random() * 100000);
+        console.log(`Sending native notification #${notificationId}`);
         
-        console.log(`Sending immediate notification #${notificationId}`);
-        
-        // For immediate notification with system default sound
-        await LocalNotifications.schedule({
+        const notificationConfig = {
           notifications: [
             {
               title,
               body,
               id: notificationId,
-              sound: 'default',
+              sound: useSound ? 'default' : null,
               smallIcon: 'ic_stat_remind_itt',
               iconColor: '#4f46e5',
               channelId: 'remind-itt-notifications',
@@ -232,20 +251,50 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               autoCancel: true
             },
           ],
-        });
+        };
+        
+        // Add schedule if provided
+        if (options?.schedule) {
+          notificationConfig.notifications[0].schedule = { 
+            at: options.schedule,
+            allowWhileIdle: true,
+            exact: true
+          };
+        }
+        
+        await LocalNotifications.schedule(notificationConfig);
         console.log(`Native notification #${notificationId} sent successfully`);
       } catch (error) {
         console.error('Failed to send notification:', error);
         
-        // Fallback to toast
-        try {
-          toast.info(`${title}: ${body}`, {
-            duration: 5000,
-            important: priority === 'High'
-          });
-        } catch (fallbackError) {
-          console.error('Even fallback toast notification failed:', fallbackError);
-        }
+        // Retry once after a delay
+        setTimeout(async () => {
+          try {
+            console.log(`Retrying notification #${notificationId} after failure`);
+            await LocalNotifications.schedule({
+              notifications: [
+                {
+                  title,
+                  body,
+                  id: notificationId,
+                  sound: useSound ? 'default' : null,
+                  smallIcon: 'ic_stat_remind_itt',
+                  iconColor: '#4f46e5',
+                  channelId: 'remind-itt-notifications',
+                }
+              ]
+            });
+            console.log(`Retry for notification #${notificationId} successful`);
+          } catch (retryError) {
+            console.error('Retry also failed for notification:', retryError);
+            
+            // Fallback to toast
+            toast.info(`${title}: ${body}`, {
+              duration: 5000,
+              important: priority === 'High'
+            });
+          }
+        }, RETRY_DELAY);
       }
     } else if ('Notification' in window && Notification.permission === 'granted') {
       const options = {
@@ -287,8 +336,35 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       }
     }
   };
+  
+  // New method to cancel a notification for a specific task
+  const cancelNotificationForTask = async (taskId: string) => {
+    if (!isNative) return;
+    
+    try {
+      // Convert string ID to number
+      const numericId = parseInt(taskId);
+      if (isNaN(numericId)) {
+        console.log(`Cannot cancel notification for task ${taskId} - invalid ID format`);
+        return;
+      }
+      
+      console.log(`Cancelling notification for task ID: ${taskId}`);
+      
+      await LocalNotifications.cancel({
+        notifications: [{ id: numericId }]
+      });
+      
+      console.log(`Successfully cancelled notification for task ID: ${taskId}`);
+    } catch (error) {
+      console.error(`Error cancelling notification for task ${taskId}:`, error);
+    }
+  };
 
+  // Enhanced method with batching, retry logic and more robust error handling
   const scheduleAllTaskNotifications = async () => {
+    if (!isNative || !notificationsEnabled) return;
+    
     console.log('Scheduling all task notifications');
     
     try {
@@ -303,6 +379,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         });
       } catch (cancelError) {
         console.error('Error cancelling previous notifications:', cancelError);
+        // Continue anyway, as this is not critical
       }
       
       const allTasks = getTodaysTasks();
@@ -339,7 +416,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           console.log(`Scheduling task "${task.title}" for ${taskTime.toLocaleTimeString()}`);
           
           notifications.push({
-            id: parseInt(task.id),
+            id: parseInt(task.id.replace(/\D/g, '').slice(-5)), // Extract numbers from task ID and use last 5 digits
             title: task.priority === 'High' ? '⭐ High Priority Task' : 'Task Reminder',
             body: `It's time for: ${task.title}`,
             schedule: { 
@@ -363,43 +440,119 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         console.log(`Scheduling ${notifications.length} notifications with LocalNotifications.schedule`);
         
         // Schedule notifications in smaller batches to avoid potential issues
-        const batchSize = 10;
+        const batchSize = MAX_BATCH_SIZE;
+        let batchSuccess = true;
+        
         for (let i = 0; i < notifications.length; i += batchSize) {
           const batch = notifications.slice(i, i + batchSize);
           try {
             await LocalNotifications.schedule({ notifications: batch });
-            console.log(`Successfully scheduled batch of ${batch.length} notifications`);
+            console.log(`Successfully scheduled batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(notifications.length/batchSize)} (${batch.length} notifications)`);
           } catch (error) {
-            console.error(`Error scheduling batch ${i/batchSize + 1}:`, error);
+            console.error(`Error scheduling batch ${Math.floor(i/batchSize) + 1}:`, error);
+            batchSuccess = false;
+            
+            // Try scheduling one by one as a fallback for this batch
+            console.log(`Trying to schedule batch ${Math.floor(i/batchSize) + 1} one by one`);
+            for (const notification of batch) {
+              try {
+                await LocalNotifications.schedule({ 
+                  notifications: [notification] 
+                });
+                console.log(`Successfully scheduled individual notification for ID ${notification.id}`);
+              } catch (individualError) {
+                console.error(`Failed to schedule individual notification for ID ${notification.id}:`, individualError);
+                
+                // One final retry after a delay
+                setTimeout(async () => {
+                  try {
+                    await LocalNotifications.schedule({ 
+                      notifications: [notification] 
+                    });
+                    console.log(`Retry successful for notification ID ${notification.id}`);
+                  } catch (retryError) {
+                    console.error(`Retry also failed for notification ID ${notification.id}:`, retryError);
+                  }
+                }, RETRY_DELAY);
+              }
+            }
           }
         }
         
-        // Verify notifications were scheduled
-        try {
-          const pending = await LocalNotifications.getPending();
-          console.log(`Verified ${pending.notifications.length} pending notifications`);
-          pending.notifications.forEach(n => {
-            console.log(`Scheduled: ID ${n.id} at ${new Date(n.schedule?.at || 0).toLocaleTimeString()}`);
-          });
-        } catch (e) {
-          console.error('Error verifying scheduled notifications:', e);
+        // Verify notifications were scheduled if all batches were successful
+        if (batchSuccess) {
+          try {
+            const pending = await LocalNotifications.getPending();
+            console.log(`Verified ${pending.notifications.length} pending notifications`);
+            if (pending.notifications.length > 0 && pending.notifications.length < 5) {
+              // Only log details if there are a reasonable number to show
+              pending.notifications.forEach(n => {
+                console.log(`Scheduled: ID ${n.id} at ${new Date(n.schedule?.at || 0).toLocaleTimeString()}`);
+              });
+            }
+          } catch (e) {
+            console.error('Error verifying scheduled notifications:', e);
+          }
         }
       }
     } catch (error) {
       console.error('Error scheduling all task notifications:', error);
     }
   };
+  
+  // New method to allow external components to trigger a full reschedule
+  const rescheduleAllNotifications = async () => {
+    if (!notificationsEnabled) {
+      console.log('Notifications not enabled - skipping reschedule');
+      return;
+    }
+    
+    console.log('Manual reschedule of all notifications requested');
+    await scheduleAllTaskNotifications();
+    console.log('Manual reschedule completed');
+  };
 
+  // Improved notification listeners setup
   const setupNotificationListeners = async () => {
     if (isNative) {
       try {
+        // Remove existing listeners first to avoid duplicates
+        try {
+          await LocalNotifications.removeAllListeners();
+          console.log('Removed existing notification listeners');
+        } catch (err) {
+          console.error('Error removing existing listeners:', err);
+        }
+        
+        // Set up notification received listener
         await LocalNotifications.addListener('localNotificationReceived', notification => {
-          console.log('Notification received in foreground:', notification);
+          console.log('Notification received in foreground:', {
+            id: notification.id,
+            title: notification.title,
+            body: notification.body
+          });
         });
         
-        await LocalNotifications.addListener('localNotificationActionPerformed', notification => {
-          console.log('Notification action performed:', notification);
+        // Set up notification action listener
+        await LocalNotifications.addListener('localNotificationActionPerformed', notificationAction => {
+          console.log('Notification action performed:', {
+            id: notificationAction.notification.id,
+            title: notificationAction.notification.title,
+            actionId: notificationAction.actionId
+          });
+          
+          // You can add custom action handling here based on actionId
+          try {
+            // Navigate to relevant app section or perform action
+            console.log('Handling notification action');
+            
+            // For now, just log it. In future could navigate to task details, etc.
+          } catch (error) {
+            console.error('Error handling notification action:', error);
+          }
         });
+        
+        console.log('Notification listeners set up successfully');
       } catch (error) {
         console.error('Error setting up notification listeners:', error);
       }
@@ -413,22 +566,20 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     // Reschedule all notifications whenever enabled
     const setupNotifications = async () => {
-      await setupNotificationListeners();
       await scheduleAllTaskNotifications();
     };
 
     setupNotifications();
 
-    // Use more precise timing for the real-time checker
+    // Use throttled interval for checking due tasks
     const checkDueTasks = () => {
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       
       // Only run a full check at the start of each minute (when seconds are near 0)
-      // This helps ensure we don't miss notifications due to timing issues
       if (now.getSeconds() <= 3) {
-        console.log(`Checking tasks at exactly ${currentHour}:${currentMinute}`);
+        console.log(`Checking tasks at ${currentHour}:${currentMinute}`);
         
         const tasks = getTodaysTasks();
         tasks.forEach(task => {
@@ -441,18 +592,17 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                 taskHour === currentHour && 
                 taskMinute === currentMinute) {
               console.log(`Real-time check sending notification for task: ${task.title}`);
-              showNotification('Task Reminder', `It's time for: ${task.title}`, task.priority);
+              showNotification('Task Reminder', `It's time for: ${task.title}`, { priority: task.priority });
             }
           }
         });
       }
     };
 
-    // Check more frequently (every 3 seconds) to ensure we catch the start of minutes
-    const intervalId = setInterval(checkDueTasks, 3000);
+    // Throttle checking to reduce resource usage (check every 6 seconds)
+    const intervalId = setInterval(checkDueTasks, CHECK_INTERVAL);
     
-    // Inside the useEffect, remove the Capacitor-specific app state change detection
-    // and rely on the browser-based visibility APIs which work on all platforms
+    // Handle app focus for rescheduling
     const handleAppFocus = () => {
       console.log('App regained focus, rescheduling notifications');
       scheduleAllTaskNotifications();
@@ -472,7 +622,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       window.removeEventListener('focus', handleAppFocus);
       document.removeEventListener('visibilitychange', handleAppFocus);
     };
-  }, [notificationsEnabled, getTodaysTasks, isNative, showNotification]);
+  }, [notificationsEnabled, getTodaysTasks, isNative]);
 
   return (
     <NotificationContext.Provider
@@ -482,6 +632,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         showNotification,
         toggleNotifications,
         sendTestNotification,
+        rescheduleAllNotifications,
+        cancelNotificationForTask,
       }}
     >
       {children}
