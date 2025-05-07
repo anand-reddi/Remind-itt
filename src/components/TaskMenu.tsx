@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Task, useTasks } from '@/contexts/TaskContext';
@@ -40,10 +39,33 @@ export function TaskMenu({ task }: TaskMenuProps) {
   const { deleteTask } = useTasks();
   const navigate = useNavigate();
 
+  // Clean up all modals when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('modal-open');
+      // Force all focus-trap elements to be removed
+      const focusTraps = document.querySelectorAll('[data-focus-trap]');
+      focusTraps.forEach(trap => trap.remove());
+    };
+  }, []);
+
   const handleDelete = () => {
     deleteTask(task.id);
-    setAlertOpen(false); // Make sure dialog closes
-    toast.success('Task deleted successfully');
+
+    // Ensure cleanup after state changes
+    setTimeout(() => {
+      setAlertOpen(false);
+      toast.success('Task deleted successfully');
+      
+      // Force cleanup any stray overlays
+      const overlays = document.querySelectorAll('[role="alertdialog"], [role="dialog"]');
+      overlays.forEach(overlay => {
+        if (overlay instanceof HTMLElement) {
+          overlay.style.display = 'none';
+        }
+      });
+      document.body.classList.remove('modal-open');
+    }, 10);
   };
 
   const handleEdit = () => {
@@ -51,7 +73,54 @@ export function TaskMenu({ task }: TaskMenuProps) {
   };
 
   const handleEditClose = () => {
+    // First close the dialog
     setDialogOpen(false);
+    
+    // Then apply comprehensive cleanup
+    setTimeout(() => {
+      // Force cleanup any stray overlays
+      const overlays = document.querySelectorAll('[role="alertdialog"], [role="dialog"]');
+      overlays.forEach(overlay => {
+        if (overlay instanceof HTMLElement) {
+          overlay.style.display = 'none';
+        }
+      });
+      
+      // Clean up modal related attributes
+      document.body.classList.remove('modal-open');
+      document.body.style.pointerEvents = 'auto';
+      document.body.removeAttribute('aria-hidden');
+      
+      // Ensure all Radix portal elements are properly cleaned up
+      const portals = document.querySelectorAll('[data-radix-portal]');
+      portals.forEach(portal => {
+        if (portal.childElementCount === 0 && portal instanceof HTMLElement) {
+          portal.remove();
+        }
+      });
+    }, 100);
+  };
+
+  const handleAlertOpenChange = (open: boolean) => {
+    setAlertOpen(open);
+    
+    // Clean up focus handling when closing
+    if (!open) {
+      setTimeout(() => {
+        document.body.classList.remove('modal-open');
+      }, 100);
+    }
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    
+    // Clean up focus handling when closing
+    if (!open) {
+      setTimeout(() => {
+        document.body.classList.remove('modal-open');
+      }, 100);
+    }
   };
 
   return (
@@ -79,8 +148,8 @@ export function TaskMenu({ task }: TaskMenuProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-        <AlertDialogContent className="mx-4">
+      <AlertDialog open={alertOpen} onOpenChange={handleAlertOpenChange}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -94,7 +163,7 @@ export function TaskMenu({ task }: TaskMenuProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>

@@ -182,51 +182,63 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           console.log('Notifications already granted');
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
+          
+          // Initialize channel if not done already
+          try {
+            await createNotificationChannel();
+          } catch (err) {
+            console.warn('Error creating notification channel for already granted permissions:', err);
+          }
+          
           return true;
         }
 
-        // Request local notification permission first
+        // Create notification channel first (safer to do before requesting permissions)
+        try {
+          await createNotificationChannel();
+        } catch (channelErr) {
+          console.warn('Error creating notification channel:', channelErr);
+          // Continue anyway - this isn't critical
+        }
+
+        // Request local notification permission first, with error handling
         console.log('Requesting local notifications permission');
-        const localResult = await LocalNotifications.requestPermissions();
-        console.log('Local notification permission result:', localResult);
-        
-        if (localResult.display === 'granted') {
-          try {
-            // Initialize local notifications
-            await LocalNotifications.createChannel({
-              id: 'remind-itt-notifications',
-              name: 'Task Reminders',
-              description: 'Notifications for task reminders',
-              importance: 4,
-              vibration: true,
-              sound: 'default'
-            });
-            
-            // Try push notifications, but don't fail if this doesn't work
-            console.log('Requesting push notifications permission');
-            try {
-              await PushNotifications.requestPermissions();
-              await PushNotifications.register();
-              console.log('Push notifications registered');
-            } catch (pushError) {
-              console.warn('Push notifications not available (continuing with local only):', pushError);
-            }
-            
+        try {
+          const localResult = await LocalNotifications.requestPermissions();
+          console.log('Local notification permission result:', localResult);
+          
+          if (localResult.display === 'granted') {
+            // Success path - now set up push notifications in a delayed way
+            // to avoid immediate crashes
             setNotificationsEnabled(true);
             localStorage.setItem('notificationsEnabled', 'true');
             toast.success('Notifications enabled successfully');
+            
+            // Register push notifications with a delay to prevent crashes
+            setTimeout(async () => {
+              try {
+                console.log('Requesting push notifications permission with delay');
+                await PushNotifications.requestPermissions();
+                await PushNotifications.register();
+                console.log('Push notifications registered successfully');
+              } catch (delayedPushError) {
+                console.warn('Delayed push notification setup failed:', delayedPushError);
+                // Don't show error to user, just log it
+              }
+            }, 1000);
+            
             return true;
-          } catch (error) {
-            console.error('Error during notification setup:', error);
-            toast.error('Failed to initialize notifications');
+          } else {
+            toast.error('Permission for notifications was denied');
             return false;
           }
-        } else {
-          toast.error('Permission for notifications was denied');
+        } catch (permErr) {
+          console.error('Error requesting notification permissions:', permErr);
+          toast.error('Failed to setup notifications');
           return false;
         }
       } catch (error) {
-        console.error('Error requesting notification permissions:', error);
+        console.error('Error in requestNotificationPermission:', error);
         toast.error('Failed to enable notifications');
         return false;
       }
@@ -259,6 +271,26 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       console.log('Notifications are not supported on this platform');
       toast.error('Notifications are not supported on this platform');
       return false;
+    }
+  };
+
+  // Helper function to create notification channel
+  const createNotificationChannel = async () => {
+    if (!isNative) return;
+    
+    try {
+      await LocalNotifications.createChannel({
+        id: 'remind-itt-notifications',
+        name: 'Task Reminders',
+        description: 'Notifications for task reminders',
+        importance: 4,
+        vibration: true,
+        sound: 'default'
+      });
+      console.log('Created notification channel successfully');
+    } catch (err) {
+      console.error('Failed to create notification channel:', err);
+      throw err;
     }
   };
 
