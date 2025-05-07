@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { format, addDays, addMonths, addYears, parseISO, isAfter, isSameDay } from 'date-fns';
 
 export type TaskCategory = 'Work' | 'Personal' | 'Shopping' | 'Health';
 export type TaskPriority = 'High' | 'Medium' | 'Low';
@@ -25,6 +25,7 @@ export interface Task {
   recurrenceEndDate?: string; // ISO string
   selectedDays?: string[]; // Days of week for weekly recurrence
   priority: TaskPriority;
+  parentTaskId?: string; // Reference to original recurring task
 }
 
 interface TaskContextType {
@@ -63,6 +64,12 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // Process recurring tasks every time tasks changes or when app loads
+  useEffect(() => {
+    generateRecurringTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Save tasks to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -73,6 +80,126 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     return `task_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   };
 
+  // Generate recurring tasks
+  const generateRecurringTasks = () => {
+    const today = new Date();
+    const tomorrow = addDays(today, 1);
+    const nextMonth = addMonths(today, 1);
+    const nextYear = addYears(today, 1);
+
+    // Find all recurring tasks
+    const recurringTasks = tasks.filter(task => 
+      task.recurrence !== 'none' && !task.parentTaskId
+    );
+
+    let newTasks: Task[] = [];
+
+    recurringTasks.forEach(task => {
+      const taskDate = parseISO(task.date);
+      
+      // Skip if task date is in the future
+      if (isAfter(taskDate, today)) {
+        return;
+      }
+
+      let nextDate: Date | null = null;
+      let shouldCreateTask = false;
+
+      switch (task.recurrence) {
+        case 'daily':
+          nextDate = addDays(taskDate, 1);
+          shouldCreateTask = !tasks.some(t => 
+            t.parentTaskId === task.id && 
+            isSameDay(parseISO(t.date), nextDate!)
+          );
+          break;
+
+        case 'weekly':
+          // For weekly tasks, we need to check if we should generate tasks for the selected days
+          if (task.selectedDays && task.selectedDays.length > 0) {
+            const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const nextWeekDates: Date[] = [];
+            
+            // Get the next occurrence for each selected day
+            task.selectedDays.forEach(dayCode => {
+              const dayIndex = dayMap.indexOf(dayCode);
+              if (dayIndex !== -1) {
+                let daysToAdd = 1;
+                while (daysToAdd <= 7) {
+                  const possibleDate = addDays(taskDate, daysToAdd);
+                  if (possibleDate.getDay() === dayIndex && isAfter(possibleDate, today)) {
+                    nextWeekDates.push(possibleDate);
+                    break;
+                  }
+                  daysToAdd++;
+                }
+              }
+            });
+            
+            // Create tasks for each day if they don't exist yet
+            nextWeekDates.forEach(date => {
+              const existingTaskForDay = tasks.some(t => 
+                t.parentTaskId === task.id && 
+                isSameDay(parseISO(t.date), date)
+              );
+              
+              if (!existingTaskForDay) {
+                newTasks.push(createRecurringTask(task, date));
+              }
+            });
+
+            // Skip the default task creation since we've handled it specially
+            return;
+          } else {
+            nextDate = addDays(taskDate, 7);
+            shouldCreateTask = !tasks.some(t => 
+              t.parentTaskId === task.id && 
+              isSameDay(parseISO(t.date), nextDate!)
+            );
+          }
+          break;
+
+        case 'monthly':
+          nextDate = addMonths(taskDate, 1);
+          shouldCreateTask = !tasks.some(t => 
+            t.parentTaskId === task.id && 
+            isSameDay(parseISO(t.date), nextDate!)
+          );
+          break;
+
+        case 'yearly':
+          nextDate = addYears(taskDate, 1);
+          shouldCreateTask = !tasks.some(t => 
+            t.parentTaskId === task.id && 
+            isSameDay(parseISO(t.date), nextDate!)
+          );
+          break;
+
+        default:
+          return;
+      }
+
+      if (nextDate && shouldCreateTask) {
+        newTasks.push(createRecurringTask(task, nextDate));
+      }
+    });
+
+    if (newTasks.length > 0) {
+      setTasks(prevTasks => [...prevTasks, ...newTasks]);
+    }
+  };
+
+  // Create a recurring task based on a template task and new date
+  const createRecurringTask = (templateTask: Task, newDate: Date): Task => {
+    return {
+      ...templateTask,
+      id: generateTaskId(),
+      date: newDate.toISOString(),
+      completed: false,
+      parentTaskId: templateTask.id
+    };
+  };
+
   // Add a new task
   const addTask = (task: Omit<Task, 'id' | 'completed'>) => {
     const newTask: Task = {
@@ -81,6 +208,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
       completed: false,
     };
     setTasks((prevTasks) => [...prevTasks, newTask]);
+    
+    // If this is a recurring task, we should immediately generate future tasks
+    if (task.recurrence !== 'none') {
+      setTimeout(() => {
+        generateRecurringTasks();
+      }, 100);
+    }
   };
 
   // Update an existing task
@@ -90,11 +224,27 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         task.id === taskId ? { ...task, ...updates } : task
       )
     );
+    
+    // If we're updating recurrence settings, regenerate recurring tasks
+    if ('recurrence' in updates || 'date' in updates || 'selectedDays' in updates) {
+      setTimeout(() => {
+        generateRecurringTasks();
+      }, 100);
+    }
   };
 
   // Delete a task
   const deleteTask = (taskId: string) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    // Find if this is a parent task and remove all children
+    const isParentTask = tasks.some(task => task.parentTaskId === taskId);
+    
+    if (isParentTask) {
+      setTasks((prevTasks) => 
+        prevTasks.filter((task) => task.id !== taskId && task.parentTaskId !== taskId)
+      );
+    } else {
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    }
   };
 
   // Toggle task completion status

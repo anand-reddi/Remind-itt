@@ -12,6 +12,7 @@ export interface EditTaskData {
   recurrence: RecurrencePattern;
   selectedDays?: string[];
   priority: TaskPriority;
+  parentTaskId?: string;
 }
 
 export interface TaskFormProps {
