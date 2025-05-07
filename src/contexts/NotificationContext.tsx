@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
@@ -14,11 +13,17 @@ interface NotificationContextType {
     id?: number;
     schedule?: Date;
     sound?: boolean;
+    sticky?: boolean;
+    repeats?: boolean;
+    repeatType?: 'everyMinute' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+    saveToHistory?: boolean;
   }) => void;
   toggleNotifications: () => void;
   sendTestNotification: () => Promise<void>;
   rescheduleAllNotifications: () => Promise<void>;
   cancelNotificationForTask: (taskId: string) => Promise<void>;
+  getNotificationHistory: () => StoredNotification[];
+  clearNotificationHistory: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -30,11 +35,61 @@ const RETRY_DELAY = 2000;
 // Throttle interval for checking due tasks (6 seconds)
 const CHECK_INTERVAL = 6000;
 
+// New: Define type for stored notifications
+interface StoredNotification {
+  id: string; // Unique ID for storage, can be different from notificationId
+  title: string;
+  body: string;
+  timestamp: number;
+  originalNotificationId?: number;
+  priority?: TaskPriority;
+  sticky?: boolean;
+  repeats?: boolean;
+  repeatType?: 'everyMinute' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  scheduleTime?: number; // Store schedule time as timestamp
+}
+
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const { getTodaysTasks } = useTasks();
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isNative, setIsNative] = useState<boolean>(false);
+  // New: State for stored notifications
+  const [storedNotifications, setStoredNotifications] = useState<StoredNotification[]>([]);
+
+  // New: Load stored notifications from localStorage on init
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('storedNotifications');
+      if (saved) {
+        setStoredNotifications(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Failed to load stored notifications from localStorage:', error);
+    }
+  }, []);
+
+  // New: Save stored notifications to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('storedNotifications', JSON.stringify(storedNotifications));
+    } catch (error) {
+      console.error('Failed to save stored notifications to localStorage:', error);
+    }
+  }, [storedNotifications]);
+
+  // New: Function to add a notification to storage
+  const addNotificationToHistory = (notification: Omit<StoredNotification, 'id' | 'timestamp'>) => {
+    setStoredNotifications(prev => [
+      { ...notification, id: `stored-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, timestamp: Date.now() },
+      ...prev.slice(0, 49), // Keep a max of 50 history items for example
+    ]);
+  };
+
+  // New: Function to clear notification history
+  const clearNotificationHistory = () => {
+    setStoredNotifications([]);
+  };
 
   useEffect(() => {
     const platform = Capacitor.getPlatform();
@@ -121,13 +176,32 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     
     if (isNative) {
       try {
-        // First request local notification permission
+        // First check if permissions are already granted
+        const permStatus = await LocalNotifications.checkPermissions();
+        if (permStatus.display === 'granted') {
+          console.log('Notifications already granted');
+          setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
+          return true;
+        }
+
+        // Request local notification permission first
         console.log('Requesting local notifications permission');
         const localResult = await LocalNotifications.requestPermissions();
         console.log('Local notification permission result:', localResult);
         
-        if (localResult.display !== 'denied') {
+        if (localResult.display === 'granted') {
           try {
+            // Initialize local notifications
+            await LocalNotifications.createChannel({
+              id: 'remind-itt-notifications',
+              name: 'Task Reminders',
+              description: 'Notifications for task reminders',
+              importance: 4,
+              vibration: true,
+              sound: 'default'
+            });
+            
             // Try push notifications, but don't fail if this doesn't work
             console.log('Requesting push notifications permission');
             try {
@@ -135,7 +209,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               await PushNotifications.register();
               console.log('Push notifications registered');
             } catch (pushError) {
-              console.error('Error registering push notifications (continuing anyway):', pushError);
+              console.warn('Push notifications not available (continuing with local only):', pushError);
             }
             
             setNotificationsEnabled(true);
@@ -144,11 +218,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             return true;
           } catch (error) {
             console.error('Error during notification setup:', error);
-            // Continue anyway with local notifications
-            setNotificationsEnabled(true);
-            localStorage.setItem('notificationsEnabled', 'true');
-            toast.success('Local notifications enabled');
-            return true;
+            toast.error('Failed to initialize notifications');
+            return false;
           }
         } else {
           toast.error('Permission for notifications was denied');
@@ -224,45 +295,77 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     id?: number;
     schedule?: Date;
     sound?: boolean;
+    sticky?: boolean;
+    repeats?: boolean;
+    repeatType?: 'everyMinute' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+    saveToHistory?: boolean;
   }) => {
     if (!notificationsEnabled) return;
     
     const priority = options?.priority || 'Medium';
     const notificationId = options?.id || Math.floor(Math.random() * 100000);
-    const useSound = options?.sound !== false; // Default to true if not specified
+    const useSound = priority === 'Low' ? false : (options?.sound !== false);
+    const isSticky = options?.sticky || false;
+    const repeats = options?.repeats || false;
+    const repeatType = options?.repeatType;
+    const saveToHistory = options?.saveToHistory || false;
 
-    console.log(`Showing notification: "${title}", priority: ${priority}, id: ${notificationId}`);
+    console.log(`Showing notification: "${title}", priority: ${priority}, id: ${notificationId}, sticky: ${isSticky}, repeats: ${repeats}, save: ${saveToHistory}`);
+
+    if (saveToHistory) {
+      addNotificationToHistory({
+        title,
+        body,
+        originalNotificationId: notificationId,
+        priority,
+        sticky: isSticky,
+        repeats,
+        repeatType,
+        scheduleTime: options?.schedule?.getTime(),
+      });
+    }
 
     if (isNative) {
       try {
         console.log(`Sending native notification #${notificationId}`);
         
-        const notificationConfig = {
-          notifications: [
-            {
-              title,
-              body,
-              id: notificationId,
-              sound: useSound ? 'default' : null,
-              smallIcon: 'ic_stat_remind_itt',
-              iconColor: '#4f46e5',
-              channelId: 'remind-itt-notifications',
-              ongoing: false,
-              autoCancel: true
-            },
-          ],
+        const notification: any = { // Using 'any' for now, will refine with Capacitor types if available/needed
+          title,
+          body,
+          id: notificationId,
+          sound: useSound ? 'default' : undefined, // Use undefined for no sound
+          smallIcon: 'ic_stat_remind_itt',
+          iconColor: '#4f46e5',
+          channelId: 'remind-itt-notifications',
+          ongoing: isSticky,
+          autoCancel: !isSticky, // If sticky, don't autocancel
         };
-        
-        // Add schedule if provided
+
         if (options?.schedule) {
-          notificationConfig.notifications[0].schedule = { 
+          notification.schedule = { 
             at: options.schedule,
             allowWhileIdle: true,
-            exact: true
           };
+          if (repeats && repeatType) {
+            notification.schedule.repeats = true;
+            let every: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' | undefined = undefined;
+            switch (repeatType) {
+              case 'everyMinute': every = 'minute'; break;
+              case 'hourly': every = 'hour'; break;
+              case 'daily': every = 'day'; break;
+              case 'weekly': every = 'week'; break;
+              case 'monthly': every = 'month'; break;
+              case 'yearly': every = 'year'; break;
+            }
+            if (every) {
+              notification.schedule.every = every;
+            }
+          } else {
+            notification.schedule.exact = true;
+          }
         }
         
-        await LocalNotifications.schedule(notificationConfig);
+        await LocalNotifications.schedule({ notifications: [notification] });
         console.log(`Native notification #${notificationId} sent successfully`);
       } catch (error) {
         console.error('Failed to send notification:', error);
@@ -277,10 +380,29 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                   title,
                   body,
                   id: notificationId,
-                  sound: useSound ? 'default' : null,
+                  sound: useSound ? 'default' : undefined,
                   smallIcon: 'ic_stat_remind_itt',
                   iconColor: '#4f46e5',
                   channelId: 'remind-itt-notifications',
+                  ongoing: isSticky,
+                  autoCancel: !isSticky,
+                  schedule: options?.schedule ? {
+                    at: options.schedule,
+                    allowWhileIdle: true,
+                    repeats: repeats && repeatType ? true : undefined,
+                    every: repeats && repeatType ? ((): 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year' | undefined => {
+                      switch (repeatType) {
+                        case 'everyMinute': return 'minute';
+                        case 'hourly': return 'hour';
+                        case 'daily': return 'day';
+                        case 'weekly': return 'week';
+                        case 'monthly': return 'month';
+                        case 'yearly': return 'year';
+                        default: return undefined;
+                      }
+                    })() : undefined,
+                    ...(repeats && repeatType ? {} : { exact: true })
+                  } : undefined,
                 }
               ]
             });
@@ -404,32 +526,59 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         const [hours, minutes] = task.startTime.split(':').map(Number);
         if (isNaN(hours) || isNaN(minutes)) continue;
         
-        // Create task time - set seconds and milliseconds to exactly 0 for precision
         const taskTime = new Date();
         taskTime.setHours(hours);
         taskTime.setMinutes(minutes);
         taskTime.setSeconds(0);
         taskTime.setMilliseconds(0);
         
-        // Only schedule if it's in the future
         if (taskTime > now) {
+          // Default to not sticky, not repeating for general task reminders
+          // These could be enhanced if tasks themselves have these properties
+          const isSticky = false; // Default for tasks
+          const repeats = false;  // Default for tasks
+          // const repeatType = undefined; // Default for tasks
+
           console.log(`Scheduling task "${task.title}" for ${taskTime.toLocaleTimeString()}`);
           
-          notifications.push({
-            id: parseInt(task.id.replace(/\D/g, '').slice(-5)), // Extract numbers from task ID and use last 5 digits
-            title: task.priority === 'High' ? '⭐ High Priority Task' : 'Task Reminder',
-            body: `It's time for: ${task.title}`,
-            schedule: { 
-              at: taskTime,
-              allowWhileIdle: true,
-              exact: true
-            },
-            sound: 'default',
-            smallIcon: 'ic_stat_remind_itt',
-            iconColor: '#4f46e5',
-            channelId: 'remind-itt-notifications',
-            ongoing: false,
-            autoCancel: true
+          const isHighPriority = task.priority === 'High';
+          const notificationTimes = isHighPriority ? [
+            taskTime, 
+            new Date(taskTime.getTime() - 15 * 60000), 
+            new Date(taskTime.getTime() - 30 * 60000)
+          ] : [taskTime];
+          
+          notificationTimes.forEach((time, index) => {
+            if (time > now) {
+              let uniqueIdPart = parseInt(task.id.replace(/\D/g, '').slice(-5));
+              if (isNaN(uniqueIdPart)) {
+                uniqueIdPart = Math.floor(Math.random() * 10000);
+              }
+              const notificationId = uniqueIdPart + index * 100000;
+
+              const useSoundForTask = task.priority === 'Low' ? false : true;
+
+              notifications.push({
+                id: notificationId,
+                title: isHighPriority ? '⭐ High Priority Task' : 'Task Reminder',
+                body: index === 0 ? 
+                  `It's time for: ${task.title}` : 
+                  `Upcoming task in ${index === 1 ? '15' : '30'} minutes: ${task.title}`,
+                schedule: { 
+                  at: time,
+                  allowWhileIdle: true,
+                  exact: true,
+                  repeats: false,
+                },
+                sound: useSoundForTask ? 'default' : undefined,
+                smallIcon: 'ic_stat_remind_itt',
+                iconColor: '#4f46e5',
+                channelId: 'remind-itt-notifications',
+                ongoing: isSticky,
+                autoCancel: !isSticky,
+                wake: true 
+              });
+            }
           });
         } else {
           console.log(`Skipping past task "${task.title}" scheduled for ${taskTime.toLocaleTimeString()}`);
@@ -634,6 +783,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         sendTestNotification,
         rescheduleAllNotifications,
         cancelNotificationForTask,
+        getNotificationHistory: () => storedNotifications,
+        clearNotificationHistory,
       }}
     >
       {children}
