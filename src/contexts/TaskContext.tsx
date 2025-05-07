@@ -23,6 +23,7 @@ export interface Task {
   completed: boolean;
   recurrence: RecurrencePattern;
   recurrenceEndDate?: string; // ISO string
+  selectedDays?: string[]; // Days of week for weekly recurrence
   priority: TaskPriority;
 }
 

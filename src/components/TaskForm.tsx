@@ -23,6 +23,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const [reminderTime, setReminderTime] = useState(editTask?.startTime || '');
   const [category, setCategory] = useState<TaskCategory>(editTask?.category || 'Work');
   const [recurrence, setRecurrence] = useState<RecurrencePattern>(editTask?.recurrence || 'none');
+  const [selectedDays, setSelectedDays] = useState<string[]>(editTask?.selectedDays || []);
   const [priority, setPriority] = useState<TaskPriority>(editTask?.priority || 'Medium');
   const [mode, setMode] = useState<'save' | 'schedule'>('save');
   
@@ -32,7 +33,17 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   // Check if form is valid based on required fields and mode
   const isFormValid = 
     title.trim() !== '' && 
-    (mode !== 'schedule' || (date !== undefined && reminderTime !== ''));
+    (mode !== 'schedule' || (date !== undefined && reminderTime !== '')) &&
+    (recurrence !== 'weekly' || selectedDays.length > 0);
+
+  // Set default day selection when recurrence is changed to weekly
+  useEffect(() => {
+    if (recurrence === 'weekly' && selectedDays.length === 0) {
+      const today = new Date().getDay();
+      const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      setSelectedDays([dayMap[today]]);
+    }
+  }, [recurrence, selectedDays]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +65,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       }
     }
 
+    if (recurrence === 'weekly' && selectedDays.length === 0) {
+      toast.error('Please select at least one day for weekly recurrence');
+      return;
+    }
+
     const taskData = {
       title,
       description,
@@ -62,6 +78,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       endTime: '',
       category,
       recurrence,
+      selectedDays: recurrence === 'weekly' ? selectedDays : [],
       priority
     };
 
@@ -80,6 +97,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
     setReminderTime('');
     setCategory('Work');
     setRecurrence('none');
+    setSelectedDays([]);
     setPriority('Medium');
 
     if (onSubmit) onSubmit();
@@ -140,7 +158,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
               onReminderTimeChange={setReminderTime} 
             />
           </div>
-          <RecurrenceSelect recurrence={recurrence} onRecurrenceChange={setRecurrence} />
+          <RecurrenceSelect 
+            recurrence={recurrence} 
+            onRecurrenceChange={setRecurrence}
+            selectedDays={selectedDays}
+            onSelectedDaysChange={setSelectedDays}
+          />
         </div>
       )}
 

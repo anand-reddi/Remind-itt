@@ -10,6 +10,7 @@ export interface EditTaskData {
   endTime?: string;
   category: TaskCategory;
   recurrence: RecurrencePattern;
+  selectedDays?: string[];
   priority: TaskPriority;
 }
 
