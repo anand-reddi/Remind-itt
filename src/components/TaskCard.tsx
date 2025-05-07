@@ -1,6 +1,6 @@
 
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Circle, Clock, Flag } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Flag, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task, useTasks } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ export function TaskCard({ task }: TaskCardProps) {
       return `${task.startTime} - ${task.endTime}`;
     }
     if (task.startTime) {
-      return `Start: ${task.startTime}`;
+      return task.startTime;
     }
     return null;
   };
@@ -53,6 +53,7 @@ export function TaskCard({ task }: TaskCardProps) {
   };
 
   const timeDisplay = getTimeDisplay();
+  const recurrenceText = task.recurrence !== 'none' ? task.recurrence.charAt(0).toUpperCase() + task.recurrence.slice(1) : '';
 
   return (
     <div className={cn(
@@ -73,8 +74,9 @@ export function TaskCard({ task }: TaskCardProps) {
               </span>
             )}
             {task.recurrence !== 'none' && (
-              <span className="text-xs text-muted-foreground">
-                {task.recurrence.charAt(0).toUpperCase() + task.recurrence.slice(1)}
+              <span className="text-xs text-muted-foreground flex items-center">
+                <Repeat className="h-3 w-3 mr-1" />
+                {recurrenceText}
               </span>
             )}
           </div>
@@ -84,7 +86,7 @@ export function TaskCard({ task }: TaskCardProps) {
           {task.description && (
             <p className="mt-1 text-sm text-muted-foreground">{task.description}</p>
           )}
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-4">
             {timeDisplay && (
               <div className="flex items-center text-xs text-muted-foreground">
                 <Clock className="mr-1 h-3 w-3" />
