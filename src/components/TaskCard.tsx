@@ -6,6 +6,8 @@ import { Task, useTasks } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TaskMenu } from './TaskMenu';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface TaskCardProps {
   task: Task;
@@ -13,6 +15,19 @@ interface TaskCardProps {
 
 export function TaskCard({ task }: TaskCardProps) {
   const { toggleTaskComplete } = useTasks();
+  const location = useLocation();
+  
+  // Check URL for task completion request from notification
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const taskToComplete = searchParams.get('completeTask');
+    
+    if (taskToComplete && taskToComplete === task.id && !task.completed) {
+      toggleTaskComplete(task.id);
+      // Clean up URL after handling
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location.search, task.id, toggleTaskComplete, task.completed]);
   
   const getTimeDisplay = () => {
     if (task.startTime && task.endTime) {

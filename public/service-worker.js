@@ -28,8 +28,16 @@ self.addEventListener('push', (event) => {
     badge: '/icon-192x192.png',
     vibrate: [100, 50, 100],
     data: {
-      url: data.url || '/'
-    }
+      url: data.url || '/',
+      taskId: data.taskId
+    },
+    actions: [
+      {
+        action: 'complete-task',
+        title: 'Done',
+        icon: '/icons/icon-72.webp'
+      }
+    ]
   };
   
   // Apply priority-specific options if provided
@@ -59,9 +67,21 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  event.waitUntil(
-    clients.openWindow(event.notification.data.url || '/')
-  );
+  const taskId = event.notification.data.taskId;
+  const url = event.notification.data.url || '/';
+
+  // Handle the "Done" action
+  if (event.action === 'complete-task' && taskId) {
+    // Open the app with a special URL that indicates the task should be marked as complete
+    event.waitUntil(
+      clients.openWindow(`${url}?completeTask=${taskId}`)
+    );
+  } else {
+    // Default action - just open the app
+    event.waitUntil(
+      clients.openWindow(url)
+    );
+  }
 });
 
 // Handle fetch events for network requests

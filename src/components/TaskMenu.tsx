@@ -80,7 +80,7 @@ export function TaskMenu({ task }: TaskMenuProps) {
       </DropdownMenu>
 
       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="mx-4">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -95,7 +95,7 @@ export function TaskMenu({ task }: TaskMenuProps) {
       </AlertDialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
