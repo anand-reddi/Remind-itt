@@ -1,4 +1,3 @@
-
 // Service Worker for handling push notifications and offline functionality
 self.addEventListener('install', (event) => {
   console.log('Service Worker installed');
@@ -37,7 +36,8 @@ self.addEventListener('push', (event) => {
         title: 'Done',
         icon: '/icons/icon-72.webp'
       }
-    ]
+    ],
+    requireInteraction: data.priority === 'High' ? true : false
   };
   
   // Apply priority-specific options if provided
@@ -45,7 +45,6 @@ self.addEventListener('push', (event) => {
     switch (data.priority) {
       case 'High':
         options.vibrate = [200, 100, 200, 100, 200];
-        options.requireInteraction = true;
         options.tag = 'high-priority';
         break;
       case 'Medium':
@@ -67,8 +66,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  const taskId = event.notification.data.taskId;
-  const url = event.notification.data.url || '/';
+  const taskId = event.notification.data?.taskId;
+  const url = event.notification.data?.url || '/';
 
   // Handle the "Done" action
   if (event.action === 'complete-task' && taskId) {
@@ -77,9 +76,20 @@ self.addEventListener('notificationclick', (event) => {
       clients.openWindow(`${url}?completeTask=${taskId}`)
     );
   } else {
-    // Default action - just open the app
+    // Try to focus on an existing window first
     event.waitUntil(
-      clients.openWindow(url)
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+          // If we have a client, focus it
+          for (const client of clientList) {
+            if (client.url.includes(self.location.origin) && 'focus' in client) {
+              return client.focus();
+            }
+          }
+          
+          // Otherwise open a new window
+          return clients.openWindow(url);
+        })
     );
   }
 });

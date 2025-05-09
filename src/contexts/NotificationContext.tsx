@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
@@ -56,6 +57,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const [isNative, setIsNative] = useState<boolean>(false);
   // New: State for stored notifications
   const [storedNotifications, setStoredNotifications] = useState<StoredNotification[]>([]);
+  // Add initialization flag to prevent multiple permission requests
+  const [isInitializing, setIsInitializing] = useState<boolean>(false);
 
   // New: Load stored notifications from localStorage on init
   useEffect(() => {
@@ -174,6 +177,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const requestNotificationPermission = async (): Promise<boolean> => {
     console.log('Requesting notification permission, isNative:', isNative);
     
+    // Prevent multiple simultaneous permission requests which can cause crashes
+    if (isInitializing) {
+      console.log('Permission request already in progress, skipping');
+      return false;
+    }
+    
+    setIsInitializing(true);
+    
     if (isNative) {
       try {
         // First check if permissions are already granted
@@ -190,6 +201,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             console.warn('Error creating notification channel for already granted permissions:', err);
           }
           
+          setIsInitializing(false);
           return true;
         }
 
@@ -214,32 +226,46 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             localStorage.setItem('notificationsEnabled', 'true');
             toast.success('Notifications enabled successfully');
             
-            // Register push notifications with a delay to prevent crashes
+            // Wait longer before registering push notifications to prevent crashes
+            // This is the key change to fix the crash issue
             setTimeout(async () => {
               try {
                 console.log('Requesting push notifications permission with delay');
                 await PushNotifications.requestPermissions();
-                await PushNotifications.register();
-                console.log('Push notifications registered successfully');
+                
+                // Additional delay before registration to prevent crashes
+                setTimeout(async () => {
+                  try {
+                    console.log('Registering push notifications after safety delay');
+                    await PushNotifications.register();
+                    console.log('Push notifications registered successfully');
+                  } catch (registerError) {
+                    console.warn('Delayed push notification registration failed:', registerError);
+                  }
+                }, 1500);
+                
               } catch (delayedPushError) {
                 console.warn('Delayed push notification setup failed:', delayedPushError);
-                // Don't show error to user, just log it
               }
-            }, 1000);
+            }, 2500);
             
+            setIsInitializing(false);
             return true;
           } else {
             toast.error('Permission for notifications was denied');
+            setIsInitializing(false);
             return false;
           }
         } catch (permErr) {
           console.error('Error requesting notification permissions:', permErr);
           toast.error('Failed to setup notifications');
+          setIsInitializing(false);
           return false;
         }
       } catch (error) {
         console.error('Error in requestNotificationPermission:', error);
         toast.error('Failed to enable notifications');
+        setIsInitializing(false);
         return false;
       }
     } else if ('Notification' in window) {
@@ -247,6 +273,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       if (Notification.permission === 'granted') {
         setNotificationsEnabled(true);
         localStorage.setItem('notificationsEnabled', 'true');
+        setIsInitializing(false);
         return true;
       }
       
@@ -258,18 +285,22 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
           toast.success('Notifications enabled successfully');
+          setIsInitializing(false);
           return true;
         } else {
           toast.error('Permission for notifications was denied');
+          setIsInitializing(false);
           return false;
         }
       } catch (error) {
         console.error('Web requestPermission error:', error);
+        setIsInitializing(false);
         return false;
       }
     } else {
       console.log('Notifications are not supported on this platform');
       toast.error('Notifications are not supported on this platform');
+      setIsInitializing(false);
       return false;
     }
   };
@@ -483,10 +514,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
-        // Send an immediate test notification
+        // Send a delayed test notification to avoid immediate crashes
         setTimeout(() => {
-          sendTestNotification();
-        }, 1000);
+          try {
+            sendTestNotification();
+          } catch (error) {
+            console.error('Error sending test notification:', error);
+          }
+        }, 3000);
       }
     }
   };
