@@ -1,14 +1,45 @@
-
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { toast } from '@/components/ui/sonner';
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
   const { notificationsEnabled, toggleNotifications, sendTestNotification } = useNotifications();
+  const [isTestingNotification, setIsTestingNotification] = useState(false);
+
+  const handleTestNotification = async () => {
+    // Prevent multiple clicks
+    if (isTestingNotification) return;
+    
+    try {
+      setIsTestingNotification(true);
+      toast.info('Sending test notification...');
+      
+      // Add a small delay before sending to allow UI to update
+      setTimeout(async () => {
+        try {
+          await sendTestNotification();
+          // Success is handled by the sendTestNotification function
+        } catch (error) {
+          console.error('Error sending test notification:', error);
+          toast.error('Failed to send notification');
+        } finally {
+          // Reset button after a short delay
+          setTimeout(() => {
+            setIsTestingNotification(false);
+          }, 3000);
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error in test notification handler:', error);
+      setIsTestingNotification(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
@@ -53,11 +84,12 @@ const Settings = () => {
               {notificationsEnabled && (
                 <div className="pt-4">
                   <Button 
-                    onClick={() => sendTestNotification()} 
+                    onClick={handleTestNotification} 
                     variant="secondary" 
                     className="w-full"
+                    disabled={isTestingNotification}
                   >
-                    Send Test Notification
+                    {isTestingNotification ? 'Sending...' : 'Send Test Notification'}
                   </Button>
                   <p className="text-xs text-muted-foreground mt-2">
                     Use this button to test if notifications are working properly

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
@@ -185,70 +184,70 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     
     setIsInitializing(true);
     
-    if (isNative) {
-      try {
-        // First check if permissions are already granted
-        const permStatus = await LocalNotifications.checkPermissions();
-        if (permStatus.display === 'granted') {
-          console.log('Notifications already granted');
-          setNotificationsEnabled(true);
-          localStorage.setItem('notificationsEnabled', 'true');
-          
-          // Initialize channel if not done already
-          try {
-            await createNotificationChannel();
-          } catch (err) {
-            console.warn('Error creating notification channel for already granted permissions:', err);
+    try {
+      if (isNative) {
+        try {
+          // First check if permissions are already granted
+          const permStatus = await LocalNotifications.checkPermissions();
+          if (permStatus.display === 'granted') {
+            console.log('Notifications already granted');
+            setNotificationsEnabled(true);
+            localStorage.setItem('notificationsEnabled', 'true');
+            
+            // Initialize channel if not done already
+            try {
+              await createNotificationChannel();
+            } catch (err) {
+              console.error('Error creating notification channel:', err);
+            }
+            
+            setIsInitializing(false);
+            return true;
           }
           
+          // Request permissions with improved error handling
+          console.log('Requesting notification permissions on native device');
+          const requestResult = await LocalNotifications.requestPermissions();
+          console.log('Permission request result:', requestResult);
+          
+          if (requestResult.display === 'granted') {
+            // Create notification channel - important for Android
+            await createNotificationChannel();
+            
+            console.log('Notification permission granted successfully');
+            setNotificationsEnabled(true);
+            localStorage.setItem('notificationsEnabled', 'true');
+            setIsInitializing(false);
+            return true;
+          } else {
+            console.log('Notification permission not granted:', requestResult.display);
+            toast.error('Notification permission denied');
+            setIsInitializing(false);
+            return false;
+          }
+        } catch (error) {
+          console.error('Error requesting notification permissions:', error);
+          toast.error('Failed to request notification permissions');
+          setIsInitializing(false);
+          return false;
+        }
+      } else if ('Notification' in window) {
+        console.log('Requesting web notification permission');
+        if (Notification.permission === 'granted') {
+          setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
           setIsInitializing(false);
           return true;
         }
-
-        // Create notification channel first (safer to do before requesting permissions)
+        
         try {
-          await createNotificationChannel();
-        } catch (channelErr) {
-          console.warn('Error creating notification channel:', channelErr);
-          // Continue anyway - this isn't critical
-        }
-
-        // Request local notification permission first, with error handling
-        console.log('Requesting local notifications permission');
-        try {
-          const localResult = await LocalNotifications.requestPermissions();
-          console.log('Local notification permission result:', localResult);
+          const permission = await Notification.requestPermission();
+          console.log('Web notification permission result:', permission);
           
-          if (localResult.display === 'granted') {
-            // Success path - now set up push notifications in a delayed way
-            // to avoid immediate crashes
+          if (permission === 'granted') {
             setNotificationsEnabled(true);
             localStorage.setItem('notificationsEnabled', 'true');
             toast.success('Notifications enabled successfully');
-            
-            // Wait longer before registering push notifications to prevent crashes
-            // This is the key change to fix the crash issue
-            setTimeout(async () => {
-              try {
-                console.log('Requesting push notifications permission with delay');
-                await PushNotifications.requestPermissions();
-                
-                // Additional delay before registration to prevent crashes
-                setTimeout(async () => {
-                  try {
-                    console.log('Registering push notifications after safety delay');
-                    await PushNotifications.register();
-                    console.log('Push notifications registered successfully');
-                  } catch (registerError) {
-                    console.warn('Delayed push notification registration failed:', registerError);
-                  }
-                }, 1500);
-                
-              } catch (delayedPushError) {
-                console.warn('Delayed push notification setup failed:', delayedPushError);
-              }
-            }, 2500);
-            
             setIsInitializing(false);
             return true;
           } else {
@@ -256,50 +255,19 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             setIsInitializing(false);
             return false;
           }
-        } catch (permErr) {
-          console.error('Error requesting notification permissions:', permErr);
-          toast.error('Failed to setup notifications');
+        } catch (error) {
+          console.error('Web requestPermission error:', error);
           setIsInitializing(false);
           return false;
         }
-      } catch (error) {
-        console.error('Error in requestNotificationPermission:', error);
-        toast.error('Failed to enable notifications');
+      } else {
+        console.log('Notifications are not supported on this platform');
+        toast.error('Notifications are not supported on this platform');
         setIsInitializing(false);
         return false;
       }
-    } else if ('Notification' in window) {
-      console.log('Requesting web notification permission');
-      if (Notification.permission === 'granted') {
-        setNotificationsEnabled(true);
-        localStorage.setItem('notificationsEnabled', 'true');
-        setIsInitializing(false);
-        return true;
-      }
-      
-      try {
-        const permission = await Notification.requestPermission();
-        console.log('Web notification permission result:', permission);
-        
-        if (permission === 'granted') {
-          setNotificationsEnabled(true);
-          localStorage.setItem('notificationsEnabled', 'true');
-          toast.success('Notifications enabled successfully');
-          setIsInitializing(false);
-          return true;
-        } else {
-          toast.error('Permission for notifications was denied');
-          setIsInitializing(false);
-          return false;
-        }
-      } catch (error) {
-        console.error('Web requestPermission error:', error);
-        setIsInitializing(false);
-        return false;
-      }
-    } else {
-      console.log('Notifications are not supported on this platform');
-      toast.error('Notifications are not supported on this platform');
+    } catch (error) {
+      console.error('Unexpected error during permission request:', error);
       setIsInitializing(false);
       return false;
     }
@@ -330,21 +298,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       try {
         console.log('Sending test notification with default system sound');
         
+        // Use a simpler notification structure for testing
         await LocalNotifications.schedule({
           notifications: [
             {
               title: 'Test Notification',
-              body: 'This is a test notification with sound',
-              id: Math.floor(Math.random() * 100000),
-              sound: 'default',
+              body: 'This is a test notification',
+              id: Math.floor(Math.random() * 10000),
+              // Simplify notification options to reduce chance of crashes
               smallIcon: 'ic_stat_remind_itt',
-              iconColor: '#4f46e5',
               channelId: 'remind-itt-notifications',
             }
           ]
         });
         console.log('Test notification sent successfully');
-        toast.success('Test notification sent with sound');
+        toast.success('Test notification sent');
       } catch (error) {
         console.error('Failed to send test notification:', error);
         toast.error('Failed to send test notification');
@@ -514,14 +482,15 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
-        // Send a delayed test notification to avoid immediate crashes
+        // Use a longer timeout to ensure the permission dialog has fully resolved
+        // This helps prevent crashes when sending the test notification
         setTimeout(() => {
           try {
             sendTestNotification();
           } catch (error) {
             console.error('Error sending test notification:', error);
           }
-        }, 3000);
+        }, 5000); // Increased from 3000 to 5000ms
       }
     }
   };
