@@ -1,3 +1,5 @@
+const CHANNEL_ID = 'remind-itt-notifications-v3';
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useTasks, TaskPriority } from './TaskContext';
 import { toast } from '@/components/ui/sonner';
@@ -58,6 +60,83 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const [storedNotifications, setStoredNotifications] = useState<StoredNotification[]>([]);
   // Add initialization flag to prevent multiple permission requests
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
+
+  useEffect(() => {
+    async function ensureChannel() {
+      // delete old channel if it exists
+      try { await LocalNotifications.deleteChannel({ id: CHANNEL_ID }) } catch {}
+      
+      // Create fresh channel with system default sound
+      try {
+        await LocalNotifications.createChannel({
+          id: CHANNEL_ID,
+          name: 'Task Reminders',
+          description: 'Notifications with system default sound',
+          importance: 5, // MAX importance
+          visibility: 1, // Public visibility
+          vibration: true,
+          lights: true,
+          sound: 'default',
+          lightColor: '#4f46e5'
+        });
+        
+        console.log('Created notification channel with system default sound');
+        
+        // Verify channel creation and settings
+        const channels = await LocalNotifications.listChannels();
+        if (channels.channels.some(c => c.id === CHANNEL_ID)) {
+          console.log('Successfully verified channel creation');
+        }
+      } catch (error) {
+        console.error('Error creating notification channel:', error);
+      }
+    }
+    
+    if (isNative) {
+      ensureChannel();
+    }
+  }, [isNative]);
+
+  // Add a new effect to request permission when the app starts
+  useEffect(() => {
+    // Request notification permission when app starts
+    const requestInitialPermission = async () => {
+      if (isNative) {
+        try {
+          // Check if permissions already granted
+          const permStatus = await LocalNotifications.checkPermissions();
+          console.log('Initial permission check:', permStatus);
+          
+          if (permStatus.display !== 'granted') {
+            console.log('Requesting initial notification permission');
+            
+            // Show a toast to inform user we're requesting permissions
+            toast.info('Please allow notifications for task reminders');
+            
+            // Request permissions
+            const result = await LocalNotifications.requestPermissions();
+            console.log('Permission request result:', result);
+            
+            if (result.display === 'granted') {
+              console.log('Notification permission granted on startup');
+              setNotificationsEnabled(true);
+              localStorage.setItem('notificationsEnabled', 'true');
+            }
+          } else {
+            console.log('Notification permission already granted');
+            setNotificationsEnabled(true);
+          }
+        } catch (error) {
+          console.error('Error requesting initial notification permission:', error);
+        }
+      }
+    };
+    
+    // Only run this once when the app starts and platform is detected
+    if (isNative) {
+      requestInitialPermission();
+    }
+  }, [isNative]);
 
   // New: Load stored notifications from localStorage on init
   useEffect(() => {
@@ -278,15 +357,45 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     if (!isNative) return;
     
     try {
+      // First remove any existing channel to ensure clean setup
+      try {
+        await LocalNotifications.deleteChannel({ id: CHANNEL_ID });
+        console.log('Deleted existing notification channel');
+      } catch (err) {
+        // Channel might not exist, that's OK
+        console.log('No existing channel to delete');
+      }
+      
+      // Create channel with system default sound - explicit settings
       await LocalNotifications.createChannel({
-        id: 'remind-itt-notifications',
+        id: CHANNEL_ID,
         name: 'Task Reminders',
-        description: 'Notifications for task reminders',
-        importance: 4,
+        description: 'Notifications with system default sound',
+        importance: 5, // MAX importance for sound to work
+        visibility: 1, // Public visibility
         vibration: true,
-        sound: 'default'
+        lights: true,
+        sound: 'default', // This is critical for sound to work
+        lightColor: '#4f46e5'
       });
-      console.log('Created notification channel successfully');
+      
+      // Wait a moment to ensure channel is created
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Verify channel creation
+      try {
+        const channels = await LocalNotifications.listChannels();
+        console.log('Available notification channels:', channels.channels.map(c => c.id));
+        if (channels.channels.some(c => c.id === CHANNEL_ID)) {
+          console.log('Verified channel creation successful');
+        } else {
+          console.warn('Channel creation may have failed - not found in channel list');
+        }
+      } catch (err) {
+        console.error('Failed to verify channel creation:', err);
+      }
+      
+      console.log('Created notification channel successfully with system default sound');
     } catch (err) {
       console.error('Failed to create notification channel:', err);
       throw err;
@@ -296,23 +405,34 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const sendTestNotification = async () => {
     if (isNative) {
       try {
-        console.log('Sending test notification with default system sound');
+        console.log('Sending test notification with system default sound');
         
-        // Use a simpler notification structure for testing
+        // Recreate the channel first to ensure sound settings
+        try {
+          await createNotificationChannel();
+        } catch (error) {
+          console.error('Error creating channel before test notification:', error);
+        }
+        
+        // Ensure sound is explicitly set as system default
         await LocalNotifications.schedule({
           notifications: [
             {
               title: 'Test Notification',
-              body: 'This is a test notification',
+              body: 'This should play the system default sound',
               id: Math.floor(Math.random() * 10000),
-              // Simplify notification options to reduce chance of crashes
               smallIcon: 'ic_stat_remind_itt',
-              channelId: 'remind-itt-notifications',
+              channelId: CHANNEL_ID,
+              sound: 'default',
+              extra: {
+                forceSound: true,
+                ensureSound: true
+              }
             }
           ]
         });
         console.log('Test notification sent successfully');
-        toast.success('Test notification sent');
+        toast.success('Test notification sent with sound');
       } catch (error) {
         console.error('Failed to send test notification:', error);
         toast.error('Failed to send test notification');
@@ -335,13 +455,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     
     const priority = options?.priority || 'Medium';
     const notificationId = options?.id || Math.floor(Math.random() * 100000);
-    const useSound = priority === 'Low' ? false : (options?.sound !== false);
+    // Always use sound unless explicitly disabled
+    const useSound = options?.sound === false ? false : true;
     const isSticky = options?.sticky || false;
     const repeats = options?.repeats || false;
     const repeatType = options?.repeatType;
     const saveToHistory = options?.saveToHistory || false;
 
-    console.log(`Showing notification: "${title}", priority: ${priority}, id: ${notificationId}, sticky: ${isSticky}, repeats: ${repeats}, save: ${saveToHistory}`);
+    console.log(`Showing notification: "${title}", priority: ${priority}, id: ${notificationId}, sound: ${useSound}, sticky: ${isSticky}, repeats: ${repeats}, save: ${saveToHistory}`);
 
     if (saveToHistory) {
       addNotificationToHistory({
@@ -358,18 +479,22 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
 
     if (isNative) {
       try {
-        console.log(`Sending native notification #${notificationId}`);
+        console.log(`Sending native notification #${notificationId} with sound: ${useSound}`);
         
-        const notification: any = { // Using 'any' for now, will refine with Capacitor types if available/needed
+        const notification: any = {
           title,
           body,
           id: notificationId,
-          sound: useSound ? 'default' : undefined, // Use undefined for no sound
+          sound: useSound ? 'default' : null, // Always use 'default' instead of undefined
           smallIcon: 'ic_stat_remind_itt',
           iconColor: '#4f46e5',
-          channelId: 'remind-itt-notifications',
+          channelId: CHANNEL_ID,
           ongoing: isSticky,
-          autoCancel: !isSticky, // If sticky, don't autocancel
+          autoCancel: !isSticky,
+          // Add extra data to ensure sound works
+          extra: {
+            ensureSound: useSound
+          }
         };
 
         if (options?.schedule) {
@@ -411,12 +536,15 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                   title,
                   body,
                   id: notificationId,
-                  sound: useSound ? 'default' : undefined,
+                  sound: useSound ? 'default' : null,
                   smallIcon: 'ic_stat_remind_itt',
                   iconColor: '#4f46e5',
-                  channelId: 'remind-itt-notifications',
+                  channelId: CHANNEL_ID,
                   ongoing: isSticky,
                   autoCancel: !isSticky,
+                  extra: {
+                    ensureSound: useSound
+                  },
                   schedule: options?.schedule ? {
                     at: options.schedule,
                     allowWhileIdle: true,
@@ -482,6 +610,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } else {
       const granted = await requestNotificationPermission();
       if (granted) {
+        // Make sure the channel is created properly before sending a test notification
+        try {
+          console.log('Creating notification channel after permissions granted');
+          await createNotificationChannel();
+        } catch (error) {
+          console.error('Error creating notification channel:', error);
+        }
+        
         // Use a longer timeout to ensure the permission dialog has fully resolved
         // This helps prevent crashes when sending the test notification
         setTimeout(() => {
@@ -526,7 +662,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     console.log('Scheduling all task notifications');
     
     try {
-      // First cancel any existing notifications
+      // First ensure the notification channel is properly set up
+      await createNotificationChannel();
+      
+      // Then cancel any existing notifications
       try {
         await LocalNotifications.getPending().then(pending => {
           if (pending.notifications && pending.notifications.length > 0) {
@@ -540,6 +679,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         // Continue anyway, as this is not critical
       }
       
+      // Get tasks and prepare notifications
       const allTasks = getTodaysTasks();
       const incompleteTasks = allTasks.filter(task => !task.completed && task.startTime);
       
@@ -592,7 +732,8 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               }
               const notificationId = uniqueIdPart + index * 100000;
 
-              const useSoundForTask = task.priority === 'Low' ? false : true;
+              // Always use sound for all task notifications
+              const useSoundForTask = true;
 
               notifications.push({
                 id: notificationId,
@@ -606,13 +747,17 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                   exact: true,
                   repeats: false,
                 },
-                sound: useSoundForTask ? 'default' : undefined,
+                sound: 'default', // Always use default sound
                 smallIcon: 'ic_stat_remind_itt',
                 iconColor: '#4f46e5',
-                channelId: 'remind-itt-notifications',
+                channelId: CHANNEL_ID,
                 ongoing: isSticky,
                 autoCancel: !isSticky,
-                wake: true 
+                wake: true,
+                extra: {
+                  ensureSound: true, // Always ensure sound
+                  taskId: task.id,
+                }
               });
             }
           });
