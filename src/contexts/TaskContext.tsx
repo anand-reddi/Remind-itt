@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { format, addDays, addMonths, addYears, parseISO, isAfter, isSameDay } from 'date-fns';
 
@@ -68,7 +67,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     generateRecurringTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tasks]);
 
   // Save tasks to localStorage whenever they change
   useEffect(() => {
@@ -83,10 +82,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   // Generate recurring tasks
   const generateRecurringTasks = () => {
     const today = new Date();
-    const tomorrow = addDays(today, 1);
-    const nextMonth = addMonths(today, 1);
-    const nextYear = addYears(today, 1);
-
+    
     // Find all recurring tasks
     const recurringTasks = tasks.filter(task => 
       task.recurrence !== 'none' && !task.parentTaskId
@@ -97,90 +93,80 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     recurringTasks.forEach(task => {
       const taskDate = parseISO(task.date);
       
-      // Skip if task date is in the future
-      if (isAfter(taskDate, today)) {
-        return;
-      }
+      // For tasks in the past or today that don't have a future instance yet,
+      // we need to generate the next occurrence(s)
+      if (!isAfter(taskDate, today) || isSameDay(taskDate, today)) {
+        // Look ahead for the next 3 occurrences
+        let nextOccurrences: Date[] = [];
+        
+        switch (task.recurrence) {
+          case 'daily':
+            // Generate the next 3 daily occurrences
+            for (let i = 1; i <= 3; i++) {
+              nextOccurrences.push(addDays(taskDate, i));
+            }
+            break;
 
-      let nextDate: Date | null = null;
-      let shouldCreateTask = false;
-
-      switch (task.recurrence) {
-        case 'daily':
-          nextDate = addDays(taskDate, 1);
-          shouldCreateTask = !tasks.some(t => 
-            t.parentTaskId === task.id && 
-            isSameDay(parseISO(t.date), nextDate!)
-          );
-          break;
-
-        case 'weekly':
-          // For weekly tasks, we need to check if we should generate tasks for the selected days
-          if (task.selectedDays && task.selectedDays.length > 0) {
-            const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-            const nextWeekDates: Date[] = [];
-            
-            // Get the next occurrence for each selected day
-            task.selectedDays.forEach(dayCode => {
-              const dayIndex = dayMap.indexOf(dayCode);
-              if (dayIndex !== -1) {
-                let daysToAdd = 1;
-                while (daysToAdd <= 7) {
-                  const possibleDate = addDays(taskDate, daysToAdd);
-                  if (possibleDate.getDay() === dayIndex && isAfter(possibleDate, today)) {
-                    nextWeekDates.push(possibleDate);
-                    break;
-                  }
-                  daysToAdd++;
-                }
-              }
-            });
-            
-            // Create tasks for each day if they don't exist yet
-            nextWeekDates.forEach(date => {
-              const existingTaskForDay = tasks.some(t => 
-                t.parentTaskId === task.id && 
-                isSameDay(parseISO(t.date), date)
-              );
+          case 'weekly':
+            // For weekly tasks, we need to check if we should generate tasks for the selected days
+            if (task.selectedDays && task.selectedDays.length > 0) {
+              const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
               
-              if (!existingTaskForDay) {
-                newTasks.push(createRecurringTask(task, date));
+              // Get the next occurrence for each selected day for the next 2 weeks
+              task.selectedDays.forEach(dayCode => {
+                const dayIndex = dayMap.indexOf(dayCode);
+                if (dayIndex !== -1) {
+                  // Look for occurrences in the next 14 days (2 weeks)
+                  for (let daysToAdd = 1; daysToAdd <= 14; daysToAdd++) {
+                    const possibleDate = addDays(taskDate, daysToAdd);
+                    if (possibleDate.getDay() === dayIndex && isAfter(possibleDate, today)) {
+                      nextOccurrences.push(possibleDate);
+                      break; // Only take the next occurrence for each selected day
+                    }
+                  }
+                }
+              });
+            } else {
+              // If no specific days are selected, just do regular weekly recurrence
+              for (let i = 1; i <= 3; i++) {
+                nextOccurrences.push(addDays(taskDate, i * 7));
               }
-            });
+            }
+            break;
 
-            // Skip the default task creation since we've handled it specially
+          case 'monthly':
+            // Generate the next 3 monthly occurrences
+            for (let i = 1; i <= 3; i++) {
+              nextOccurrences.push(addMonths(taskDate, i));
+            }
+            break;
+
+          case 'yearly':
+            // Generate the next 3 yearly occurrences
+            for (let i = 1; i <= 3; i++) {
+              nextOccurrences.push(addYears(taskDate, i));
+            }
+            break;
+
+          default:
             return;
-          } else {
-            nextDate = addDays(taskDate, 7);
-            shouldCreateTask = !tasks.some(t => 
-              t.parentTaskId === task.id && 
-              isSameDay(parseISO(t.date), nextDate!)
-            );
+        }
+        
+        // Filter to only keep future dates
+        nextOccurrences = nextOccurrences.filter(date => isAfter(date, today));
+        
+        // Create tasks for each occurrence if they don't exist yet
+        nextOccurrences.forEach(nextDate => {
+          // Check if a task already exists for this date and parent
+          const existingTaskForDay = tasks.some(t => 
+            t.parentTaskId === task.id && 
+            isSameDay(parseISO(t.date), nextDate)
+          );
+          
+          if (!existingTaskForDay) {
+            newTasks.push(createRecurringTask(task, nextDate));
           }
-          break;
-
-        case 'monthly':
-          nextDate = addMonths(taskDate, 1);
-          shouldCreateTask = !tasks.some(t => 
-            t.parentTaskId === task.id && 
-            isSameDay(parseISO(t.date), nextDate!)
-          );
-          break;
-
-        case 'yearly':
-          nextDate = addYears(taskDate, 1);
-          shouldCreateTask = !tasks.some(t => 
-            t.parentTaskId === task.id && 
-            isSameDay(parseISO(t.date), nextDate!)
-          );
-          break;
-
-        default:
-          return;
-      }
-
-      if (nextDate && shouldCreateTask) {
-        newTasks.push(createRecurringTask(task, nextDate));
+        });
       }
     });
 

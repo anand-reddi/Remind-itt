@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,29 @@ import { PrioritySelect } from './task-form/PrioritySelect';
 import { RecurrenceSelect } from './task-form/RecurrenceSelect';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Save, CalendarClock } from 'lucide-react';
+
+// Helper function to check if a date is today
+const isDateToday = (date: Date): boolean => {
+  const today = new Date();
+  return date.getDate() === today.getDate() && 
+          date.getMonth() === today.getMonth() && 
+          date.getFullYear() === today.getFullYear();
+};
+
+// Helper function to check if a time is in the past
+const isTimeInPast = (timeStr: string): boolean => {
+  const now = new Date();
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  
+  if (isNaN(hours) || isNaN(minutes)) {
+    return false;
+  }
+  
+  const selectedTime = new Date();
+  selectedTime.setHours(hours, minutes, 0, 0);
+  
+  return selectedTime < now;
+};
 
 const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const [title, setTitle] = useState(editTask?.title || '');
@@ -34,7 +56,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
   const isFormValid = 
     title.trim() !== '' && 
     (mode !== 'schedule' || (date !== undefined && reminderTime !== '')) &&
-    (recurrence !== 'weekly' || selectedDays.length > 0);
+    (recurrence !== 'weekly' || selectedDays.length > 0) &&
+    // Add check to prevent scheduling tasks with past times
+    !(mode === 'schedule' && date && isDateToday(date) && isTimeInPast(reminderTime));
 
   // Set default day selection when recurrence is changed to weekly
   useEffect(() => {
@@ -44,6 +68,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       setSelectedDays([dayMap[today]]);
     }
   }, [recurrence, selectedDays]);
+
+  // Add effect to check for past times when date is changed to today
+  useEffect(() => {
+    if (mode === 'schedule' && date && isDateToday(date) && reminderTime && isTimeInPast(reminderTime)) {
+      toast.warning('The selected time has already passed for today. Please select a future time.');
+    }
+  }, [date, mode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +92,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
       
       if (!reminderTime) {
         toast.error('Please select a reminder time');
+        return;
+      }
+
+      // Check if the time is in the past for today's date
+      if (date && isDateToday(date) && isTimeInPast(reminderTime)) {
+        toast.error('You cannot schedule a task for a time that has already passed. Please select a future time.');
         return;
       }
     }
@@ -155,7 +192,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
             <DatePicker date={date} onDateChange={setDate} />
             <ReminderTime 
               reminderTime={reminderTime} 
-              onReminderTimeChange={setReminderTime} 
+              onReminderTimeChange={setReminderTime}
+              selectedDate={date}
             />
           </div>
           <RecurrenceSelect 

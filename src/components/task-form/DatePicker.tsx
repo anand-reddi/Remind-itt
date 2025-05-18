@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { format } from 'date-fns';
+import { format, isBefore, startOfDay } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -14,6 +13,11 @@ interface DatePickerProps {
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({ date, onDateChange }) => {
+  // Disable dates that are before today
+  const disabledDays = (day: Date) => {
+    return isBefore(day, startOfDay(new Date()));
+  };
+
   return (
     <div className="space-y-2">
       <Label>Date</Label>
@@ -34,7 +38,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({ date, onDateChange }) =>
           <Calendar
             mode="single"
             selected={date}
-            onSelect={onDateChange}
+            onSelect={(newDate) => {
+              // Only allow selection of today or future dates
+              if (newDate && !isBefore(newDate, startOfDay(new Date()))) {
+                onDateChange(newDate);
+              }
+            }}
+            disabled={disabledDays}
             initialFocus
           />
         </PopoverContent>
