@@ -4,16 +4,16 @@ import { useTasks } from '@/contexts/TaskContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useNavigate } from 'react-router-dom';
+import { TaskRescheduleSuggestions } from './TaskRescheduleSuggestions';
 
 export function Dashboard() {
   const { getTodaysTasks } = useTasks();
   const { showNotification } = useNotifications();
   const [showAiSuggestion, setShowAiSuggestion] = useState(false);
-  const navigate = useNavigate();
+  const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Check if there are too many tasks today (in a real app, this would be more sophisticated)
+    // Check if there are too many tasks today
     const todaysTasks = getTodaysTasks();
     const incompleteTasks = todaysTasks.filter(t => !t.completed);
     
@@ -23,9 +23,8 @@ export function Dashboard() {
   }, [getTodaysTasks]);
 
   const handleRescheduleSuggestion = () => {
-    // In a real implementation, this would open a dialog to help reschedule tasks
-    // For now, just redirect to weekly view
-    navigate('/calendar');
+    // Open the suggestions dialog
+    setSuggestionsDialogOpen(true);
     setShowAiSuggestion(false);
   };
 
@@ -49,6 +48,11 @@ export function Dashboard() {
       )}
 
       <DailyTasks />
+      
+      <TaskRescheduleSuggestions 
+        open={suggestionsDialogOpen}
+        onOpenChange={setSuggestionsDialogOpen}
+      />
     </div>
   );
 }

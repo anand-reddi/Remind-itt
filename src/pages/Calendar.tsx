@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { format, addMonths, subMonths, isSameDay, parseISO } from 'date-fns';
 import { Task, useTasks } from '@/contexts/TaskContext';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarTaskCard } from '@/components/CalendarTaskCard';
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -94,37 +94,6 @@ const Calendar = () => {
   // Get tasks for selected date
   const tasksForSelectedDate = getTasksForDate(selectedDate);
 
-  // TaskCard component
-  const TaskCard = ({ task }: { task: Task }) => {
-    let bgColor = 'bg-primary/10';
-    
-    if (task.category === 'Work') bgColor = 'bg-blue-100 dark:bg-blue-900/30';
-    if (task.category === 'Personal') bgColor = 'bg-pink-100 dark:bg-pink-900/30';
-    if (task.category === 'Shopping') bgColor = 'bg-yellow-100 dark:bg-yellow-900/30';
-    if (task.category === 'Health') bgColor = 'bg-green-100 dark:bg-green-900/30';
-    
-    const timeDisplay = task.startTime ? 
-      `${task.startTime}${task.endTime ? ` - ${task.endTime}` : ''}` : 
-      '';
-    
-    return (
-      <div 
-        className={`${bgColor} p-3 rounded-lg border mb-2 ${
-          task.completed ? 'opacity-50' : ''
-        }`}
-      >
-        <div className="font-medium">{task.title}</div>
-        {task.description && (
-          <div className="text-sm mt-1 line-clamp-2">{task.description}</div>
-        )}
-        {timeDisplay && (
-          <div className="text-xs mt-1 opacity-70">{timeDisplay}</div>
-        )}
-        <div className="text-xs mt-1 opacity-70">{task.category} · {task.priority} Priority</div>
-      </div>
-    );
-  };
-
   // Calendar grid
   const calendarDays = generateMonthView();
 
@@ -190,7 +159,7 @@ const Calendar = () => {
         <div className="space-y-2">
           {tasksForSelectedDate.length > 0 ? (
             tasksForSelectedDate.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <CalendarTaskCard key={task.id} task={task} />
             ))
           ) : (
             <div className="text-center p-8 text-muted-foreground bg-muted/50 rounded-lg">

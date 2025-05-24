@@ -1,13 +1,13 @@
-
 import React, { useState } from 'react';
 import { useTasks, TaskCategory, TaskPriority, Task } from '@/contexts/TaskContext';
-import { TaskCard } from '@/components/TaskCard';
+import { SimpleTaskCard } from '@/components/SimpleTaskCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Save, CalendarClock } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
+import { subDays, addDays, isAfter, isBefore, isWithinInterval } from 'date-fns';
 
 type FilterOption = 'all' | TaskCategory | TaskPriority;
 type TaskMode = 'saved' | 'scheduled';
@@ -18,13 +18,33 @@ const Recent = () => {
   const [filterValue, setFilterValue] = useState<FilterOption>('all');
   const [taskMode, setTaskMode] = useState<TaskMode>('saved');
   
-  // Sort tasks by date (most recent first)
-  const sortedTasks = [...tasks].sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+  const today = new Date();
+  
+  // Different date ranges based on task mode
+  const oneWeekAgo = subDays(today, 7);
+  const twoDaysAgo = subDays(today, 2);
+  const twoDaysFromNow = addDays(today, 2);
+  
+  // Filter tasks based on date range and sort by most recent first
+  const filteredByDateTasks = tasks
+    .filter(task => {
+      const taskDate = new Date(task.date);
+      
+      if (taskMode === 'saved') {
+        // For saved tasks - show last week only
+        return isAfter(taskDate, oneWeekAgo);
+      } else {
+        // For scheduled tasks - show 2 days before and 2 days after today
+        return isWithinInterval(taskDate, {
+          start: twoDaysAgo,
+          end: twoDaysFromNow
+        });
+      }
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   // Filter tasks based on selected mode
-  const modeTasks = sortedTasks.filter((task) => {
+  const modeTasks = filteredByDateTasks.filter((task) => {
     if (taskMode === 'saved') {
       return !task.startTime; // Tasks without start time are considered saved
     } else {
@@ -44,6 +64,14 @@ const Recent = () => {
     
     return true;
   });
+
+  const getDateRangeText = () => {
+    if (taskMode === 'saved') {
+      return 'in the last week';
+    } else {
+      return 'in the -2 to +2 day range';
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto pb-16 md:pb-0 animate-fade-in">
@@ -155,11 +183,11 @@ const Recent = () => {
       <div className="space-y-4">
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <SimpleTaskCard key={task.id} task={task} />
           ))
         ) : (
           <div className="p-8 text-center text-muted-foreground">
-            No tasks found with the selected filter.
+            No tasks found {getDateRangeText()} with the selected filter.
           </div>
         )}
       </div>

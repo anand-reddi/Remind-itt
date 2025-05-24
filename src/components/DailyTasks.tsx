@@ -1,7 +1,6 @@
-
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { TaskCard } from '@/components/TaskCard';
+import { SimpleTaskCard } from '@/components/SimpleTaskCard';
 import { useTasks, TaskPriority } from '@/contexts/TaskContext';
 
 // Helper function to get tasks by priority
@@ -32,7 +31,7 @@ export function DailyTasks() {
           <h3 className="mb-3 font-semibold text-priority-high">High Priority ({highPriorityTasks.length})</h3>
           <div className="grid grid-cols-1 gap-3">
             {highPriorityTasks.map(task => (
-              <TaskCard key={task.id} task={task} />
+              <SimpleTaskCard key={task.id} task={task} />
             ))}
           </div>
         </div>
@@ -44,7 +43,7 @@ export function DailyTasks() {
           <h3 className="mb-3 font-semibold text-priority-medium">Medium Priority ({mediumPriorityTasks.length})</h3>
           <div className="grid grid-cols-1 gap-3">
             {mediumPriorityTasks.map(task => (
-              <TaskCard key={task.id} task={task} />
+              <SimpleTaskCard key={task.id} task={task} />
             ))}
           </div>
         </div>
@@ -56,7 +55,7 @@ export function DailyTasks() {
           <h3 className="mb-3 font-semibold text-priority-low">Low Priority ({lowPriorityTasks.length})</h3>
           <div className="grid grid-cols-1 gap-3">
             {lowPriorityTasks.map(task => (
-              <TaskCard key={task.id} task={task} />
+              <SimpleTaskCard key={task.id} task={task} />
             ))}
           </div>
         </div>
@@ -75,7 +74,7 @@ export function DailyTasks() {
           <h3 className="mb-3 font-semibold">Completed ({completedTasks.length})</h3>
           <div className="grid grid-cols-1 gap-3">
             {completedTasks.map(task => (
-              <TaskCard key={task.id} task={task} />
+              <SimpleTaskCard key={task.id} task={task} />
             ))}
           </div>
         </div>

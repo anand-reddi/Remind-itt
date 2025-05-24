@@ -56,7 +56,7 @@ export const RecurrenceSelect: React.FC<RecurrenceSelectProps> = ({
           <SelectValue placeholder="Select recurrence pattern" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">None (One-time)</SelectItem>
+          <SelectItem value="none">Once</SelectItem>
           <SelectItem value="daily">Daily</SelectItem>
           <SelectItem value="weekly">Weekly</SelectItem>
           <SelectItem value="monthly">Monthly</SelectItem>

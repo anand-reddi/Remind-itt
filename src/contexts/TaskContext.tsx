@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { format, addDays, addMonths, addYears, parseISO, isAfter, isSameDay } from 'date-fns';
+import { useSettings } from './SettingsContext';
 
 export type TaskCategory = 'Work' | 'Personal' | 'Shopping' | 'Health';
 export type TaskPriority = 'High' | 'Medium' | 'Low';
@@ -25,6 +26,7 @@ export interface Task {
   selectedDays?: string[]; // Days of week for weekly recurrence
   priority: TaskPriority;
   parentTaskId?: string; // Reference to original recurring task
+  isExcluded?: boolean; // Flag to mark instances that should not be regenerated
 }
 
 interface TaskContextType {
@@ -38,12 +40,25 @@ interface TaskContextType {
   getTasksForCurrentMonth: () => Task[];
   getTodaysTasks: () => Task[];
   clearCompletedTasks: () => void;
+  exportTasks: () => string;
+  importTasks: (jsonData: string) => boolean;
+  deleteAllTasks: () => void;
 }
+
+// Store deleted recurring task instances in localStorage
+interface DeletedRecurringInstance {
+  parentId: string;
+  date: string; // ISO date string
+}
+
+const DELETED_INSTANCES_KEY = 'deletedRecurringInstances';
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [deletedInstances, setDeletedInstances] = useState<DeletedRecurringInstance[]>([]);
+  const { recurrenceDefaults } = useSettings();
 
   // Load tasks from localStorage on initial load
   useEffect(() => {
@@ -61,6 +76,16 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('Failed to parse saved tasks', e);
       }
     }
+    
+    // Load deleted instances
+    const savedDeletedInstances = localStorage.getItem(DELETED_INSTANCES_KEY);
+    if (savedDeletedInstances) {
+      try {
+        setDeletedInstances(JSON.parse(savedDeletedInstances));
+      } catch (e) {
+        console.error('Failed to parse deleted instances', e);
+      }
+    }
   }, []);
 
   // Process recurring tasks every time tasks changes or when app loads
@@ -73,10 +98,23 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('tasks', JSON.stringify(tasks));
   }, [tasks]);
+  
+  // Save deleted instances to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(DELETED_INSTANCES_KEY, JSON.stringify(deletedInstances));
+  }, [deletedInstances]);
 
   // Generate a unique ID for a new task
   const generateTaskId = (): string => {
     return `task_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  };
+  
+  // Check if a recurring instance has been explicitly deleted
+  const isInstanceDeleted = (parentId: string, date: Date): boolean => {
+    return deletedInstances.some(instance => 
+      instance.parentId === parentId && 
+      isSameDay(parseISO(instance.date), date)
+    );
   };
 
   // Generate recurring tasks
@@ -96,13 +134,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
       // For tasks in the past or today that don't have a future instance yet,
       // we need to generate the next occurrence(s)
       if (!isAfter(taskDate, today) || isSameDay(taskDate, today)) {
-        // Look ahead for the next 3 occurrences
+        // Look ahead for the next occurrences based on settings
         let nextOccurrences: Date[] = [];
         
         switch (task.recurrence) {
           case 'daily':
-            // Generate the next 3 daily occurrences
-            for (let i = 1; i <= 3; i++) {
+            // Generate daily occurrences based on settings
+            for (let i = 1; i <= recurrenceDefaults.daily; i++) {
               nextOccurrences.push(addDays(taskDate, i));
             }
             break;
@@ -112,12 +150,14 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
             if (task.selectedDays && task.selectedDays.length > 0) {
               const dayMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
               
-              // Get the next occurrence for each selected day for the next 2 weeks
+              // Get the next occurrence for each selected day for the next X weeks based on settings
+              const daysToLookAhead = recurrenceDefaults.weekly * 7;
+              
               task.selectedDays.forEach(dayCode => {
                 const dayIndex = dayMap.indexOf(dayCode);
                 if (dayIndex !== -1) {
-                  // Look for occurrences in the next 14 days (2 weeks)
-                  for (let daysToAdd = 1; daysToAdd <= 14; daysToAdd++) {
+                  // Look for occurrences in the next X days based on settings
+                  for (let daysToAdd = 1; daysToAdd <= daysToLookAhead; daysToAdd++) {
                     const possibleDate = addDays(taskDate, daysToAdd);
                     if (possibleDate.getDay() === dayIndex && isAfter(possibleDate, today)) {
                       nextOccurrences.push(possibleDate);
@@ -128,22 +168,22 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
               });
             } else {
               // If no specific days are selected, just do regular weekly recurrence
-              for (let i = 1; i <= 3; i++) {
+              for (let i = 1; i <= recurrenceDefaults.weekly; i++) {
                 nextOccurrences.push(addDays(taskDate, i * 7));
               }
             }
             break;
 
           case 'monthly':
-            // Generate the next 3 monthly occurrences
-            for (let i = 1; i <= 3; i++) {
+            // Generate monthly occurrences based on settings
+            for (let i = 1; i <= recurrenceDefaults.monthly; i++) {
               nextOccurrences.push(addMonths(taskDate, i));
             }
             break;
 
           case 'yearly':
-            // Generate the next 3 yearly occurrences
-            for (let i = 1; i <= 3; i++) {
+            // Generate yearly occurrences based on settings
+            for (let i = 1; i <= recurrenceDefaults.yearly; i++) {
               nextOccurrences.push(addYears(taskDate, i));
             }
             break;
@@ -157,6 +197,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Create tasks for each occurrence if they don't exist yet
         nextOccurrences.forEach(nextDate => {
+          // Skip this date if it's in the deleted instances list
+          if (isInstanceDeleted(task.id, nextDate)) {
+            return;
+          }
+          
           // Check if a task already exists for this date and parent
           const existingTaskForDay = tasks.some(t => 
             t.parentTaskId === task.id && 
@@ -221,14 +266,34 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Delete a task
   const deleteTask = (taskId: string) => {
-    // Find if this is a parent task and remove all children
-    const isParentTask = tasks.some(task => task.parentTaskId === taskId);
+    const taskToDelete = tasks.find(task => task.id === taskId);
     
-    if (isParentTask) {
+    if (!taskToDelete) {
+      return;
+    }
+    
+    // If this is a parent task, delete all children
+    if (tasks.some(task => task.parentTaskId === taskId)) {
       setTasks((prevTasks) => 
         prevTasks.filter((task) => task.id !== taskId && task.parentTaskId !== taskId)
       );
-    } else {
+    } 
+    // If this is a child task (recurring instance), mark it as deleted so it won't be regenerated
+    else if (taskToDelete.parentTaskId) {
+      // Add to deleted instances list
+      setDeletedInstances(prev => [
+        ...prev,
+        {
+          parentId: taskToDelete.parentTaskId!,
+          date: taskToDelete.date
+        }
+      ]);
+      
+      // Remove the task
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    }
+    // Regular non-recurring task
+    else {
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
     }
   };
@@ -285,6 +350,73 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     setTasks((prevTasks) => prevTasks.filter((task) => !task.completed));
   };
 
+  // Export tasks as JSON string
+  const exportTasks = (): string => {
+    return JSON.stringify({
+      tasks,
+      deletedInstances
+    });
+  };
+
+  // Import tasks from JSON string
+  const importTasks = (jsonData: string): boolean => {
+    try {
+      const importedData = JSON.parse(jsonData);
+      
+      // Check if it's the new format with deletedInstances
+      if (importedData.tasks && Array.isArray(importedData.tasks)) {
+        // Validate that each item has required task properties
+        const isValid = importedData.tasks.every((task: any) => 
+          task.id && task.title && task.date && 
+          typeof task.completed === 'boolean' &&
+          task.category && task.recurrence
+        );
+        
+        if (!isValid) {
+          return false;
+        }
+        
+        // Replace current tasks with imported ones
+        setTasks(importedData.tasks);
+        
+        // Import deleted instances if available
+        if (importedData.deletedInstances && Array.isArray(importedData.deletedInstances)) {
+          setDeletedInstances(importedData.deletedInstances);
+        }
+        
+        return true;
+      }
+      // Legacy format (just tasks array)
+      else if (Array.isArray(importedData)) {
+        // Validate that each item has required task properties
+        const isValid = importedData.every((task: any) => 
+          task.id && task.title && task.date && 
+          typeof task.completed === 'boolean' &&
+          task.category && task.recurrence
+        );
+        
+        if (!isValid) {
+          return false;
+        }
+        
+        // Replace current tasks with imported ones
+        setTasks(importedData);
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      console.error('Failed to import tasks:', e);
+      return false;
+    }
+  };
+
+  // Delete all tasks
+  const deleteAllTasks = () => {
+    setTasks([]);
+    setDeletedInstances([]);
+  };
+
   return (
     <TaskContext.Provider
       value={{
@@ -298,6 +430,9 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         getTasksForCurrentMonth,
         getTodaysTasks,
         clearCompletedTasks,
+        exportTasks,
+        importTasks,
+        deleteAllTasks,
       }}
     >
       {children}
