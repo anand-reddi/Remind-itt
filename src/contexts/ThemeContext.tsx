@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'dark' | 'light';
@@ -10,18 +9,28 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Initialize theme synchronously before component rendering
+const getInitialTheme = (): Theme => {
+  const savedTheme = localStorage.getItem('theme') as Theme | null;
+  if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    return savedTheme;
+  } else {
+    document.documentElement.classList.add('dark');
+    return 'dark';
+  }
+};
+
+// Apply the theme immediately
+const initialTheme = getInitialTheme();
+
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    } else {
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
+    // This effect ensures the theme is applied correctly after hydration
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';

@@ -121,6 +121,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               console.log('Notification permission granted on startup');
               setNotificationsEnabled(true);
               localStorage.setItem('notificationsEnabled', 'true');
+              
+              // Show battery optimization reminder
+              toast.info(
+                'For reliable notifications, please disable battery optimization for this app in your device settings: Settings > Apps > [Remind itt] > Battery > Don\'t optimize',
+                {
+                  duration: 8000,
+                }
+              );
             }
           } else {
             console.log('Notification permission already granted');
@@ -280,6 +288,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               console.error('Error creating notification channel:', err);
             }
             
+            // Show battery optimization reminder
+            toast.info(
+              'For reliable notifications, please disable battery optimization for this app in your device settings: Settings > Apps > [Remind itt] > Battery > Don\'t optimize',
+              {
+                duration: 8000,
+              }
+            );
+            
             setIsInitializing(false);
             return true;
           }
@@ -296,6 +312,26 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             console.log('Notification permission granted successfully');
             setNotificationsEnabled(true);
             localStorage.setItem('notificationsEnabled', 'true');
+            
+            // Create notification channel
+            try {
+              await createNotificationChannel();
+            } catch (err) {
+              console.error('Error creating notification channel after permission granted:', err);
+            }
+            
+            toast.success('Notifications enabled successfully');
+            
+            // Show battery optimization reminder
+            setTimeout(() => {
+              toast.info(
+                'For reliable notifications, please disable battery optimization for this app in your device settings: Settings > Apps > [Remind itt] > Battery > Don\'t optimize',
+                {
+                  duration: 8000,
+                }
+              );
+            }, 2000);
+            
             setIsInitializing(false);
             return true;
           } else {

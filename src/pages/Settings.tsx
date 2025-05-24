@@ -20,6 +20,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+
+// Define the type for recurrence values that can be either number or empty string
+type RecurrenceValue = number | '';
+
+interface RecurrenceValues {
+  daily: RecurrenceValue;
+  weekly: RecurrenceValue;
+  monthly: RecurrenceValue;
+  yearly: RecurrenceValue;
+}
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
@@ -28,10 +40,12 @@ const Settings = () => {
   const { exportTasks, importTasks, deleteAllTasks } = useTasks();
   const [isTestingNotification, setIsTestingNotification] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Local state for recurrence defaults
-  const [recurrenceValues, setRecurrenceValues] = useState({
+  // Local state for recurrence defaults with proper typing
+  const [recurrenceValues, setRecurrenceValues] = useState<RecurrenceValues>({
     daily: recurrenceDefaults.daily,
     weekly: recurrenceDefaults.weekly,
     monthly: recurrenceDefaults.monthly,
@@ -67,47 +81,150 @@ const Settings = () => {
     }
   };
 
-  const handleRecurrenceChange = (type: 'daily' | 'weekly' | 'monthly' | 'yearly', value: string) => {
-    const numValue = parseInt(value, 10);
-    
-    // Validate input
-    if (isNaN(numValue) || numValue < 1) {
+  const handleRecurrenceChange = (type: keyof RecurrenceValues, value: string) => {
+    // Allow empty string to clear the input
+    if (value === '') {
+      setRecurrenceValues(prev => ({
+        ...prev,
+        [type]: ''
+      }));
       return;
     }
     
-    setRecurrenceValues(prev => ({
-      ...prev,
-      [type]: numValue
-    }));
-  };
-
-  const saveRecurrenceDefaults = () => {
-    updateRecurrenceDefaults(recurrenceValues);
-    toast.success('Recurrence settings saved');
-  };
-
-  const handleExportData = () => {
-    try {
-      const data = exportTasks();
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `task-spark-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success('Data exported successfully');
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      toast.error('Failed to export data');
+    const numValue = parseInt(value, 10);
+    
+    // Allow any number including zero
+    if (!isNaN(numValue) && numValue >= 0) {
+      setRecurrenceValues(prev => ({
+        ...prev,
+        [type]: numValue
+      }));
     }
   };
 
+  const saveRecurrenceDefaults = () => {
+    // Convert empty strings to default values or use a minimum value of 1
+    const valuesToSave = {
+      daily: recurrenceValues.daily === '' || recurrenceValues.daily === 0 ? 1 : recurrenceValues.daily,
+      weekly: recurrenceValues.weekly === '' || recurrenceValues.weekly === 0 ? 1 : recurrenceValues.weekly,
+      monthly: recurrenceValues.monthly === '' || recurrenceValues.monthly === 0 ? 1 : recurrenceValues.monthly,
+      yearly: recurrenceValues.yearly === '' || recurrenceValues.yearly === 0 ? 1 : recurrenceValues.yearly
+    };
+    
+    updateRecurrenceDefaults(valuesToSave);
+    
+    // Update local state with the saved values
+    setRecurrenceValues(valuesToSave);
+    
+    toast.success('Recurrence settings saved');
+  };
+
+  const handleExportData = async () => {
+    if (isExporting) return;
+    
+    try {
+      setIsExporting(true);
+      toast.info('Preparing data for export...');
+      
+      const data = exportTasks();
+      const fileName = `remind-itt-export-${new Date().toISOString().split('T')[0]}.json`;
+      
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Request permissions first on Android
+          if (Capacitor.getPlatform() === 'android') {
+            await Filesystem.requestPermissions();
+          }
+          
+          // Write file to downloads directory
+          await Filesystem.writeFile({
+            path: fileName,
+            data: data,
+            directory: Directory.Documents,
+            encoding: Encoding.UTF8
+          });
+          
+          toast.success('Data exported successfully to Documents folder');
+        } catch (error) {
+          console.error('Error exporting data to filesystem:', error);
+          
+          // Fallback to browser download if filesystem fails
+          downloadBrowserFile(data, fileName);
+        }
+      } else {
+        // Web platform - use browser download
+        downloadBrowserFile(data, fileName);
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Failed to export data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  // Helper function for browser downloads
+  const downloadBrowserFile = (data: string, fileName: string) => {
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Data exported successfully');
+  };
+
   const handleImportClick = () => {
-    if (fileInputRef.current) {
+    if (isImporting) return;
+    
+    if (Capacitor.isNativePlatform()) {
+      importNativeFile();
+    } else if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+  
+  const importNativeFile = async () => {
+    try {
+      setIsImporting(true);
+      toast.info('Selecting file to import...');
+      
+      // Request permissions first on Android
+      if (Capacitor.getPlatform() === 'android') {
+        await Filesystem.requestPermissions();
+      }
+      
+      // Use capacitor-file-picker plugin or similar here
+      // Since we don't have that installed, we'll show a toast explaining the limitation
+      toast.error('To import on mobile, please install from a backup file in your Documents folder');
+      setIsImporting(false);
+      
+      // If we had the file picker plugin, we would do something like:
+      // const result = await FilePicker.pickFiles({
+      //   types: ['application/json'],
+      //   multiple: false
+      // });
+      // 
+      // if (result.files.length > 0) {
+      //   const fileContent = await Filesystem.readFile({
+      //     path: result.files[0].path,
+      //     encoding: Encoding.UTF8
+      //   });
+      //   
+      //   const success = importTasks(fileContent.data);
+      //   if (success) {
+      //     toast.success('Data imported successfully');
+      //   } else {
+      //     toast.error('Invalid data format');
+      //   }
+      // }
+    } catch (error) {
+      console.error('Error importing data:', error);
+      toast.error('Failed to import data');
+      setIsImporting(false);
     }
   };
 
@@ -115,6 +232,7 @@ const Settings = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setIsImporting(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -129,11 +247,13 @@ const Settings = () => {
       } catch (error) {
         console.error('Error importing data:', error);
         toast.error('Failed to import data');
-      }
-      
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      } finally {
+        setIsImporting(false);
+        
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     };
     
@@ -201,6 +321,20 @@ const Settings = () => {
                   </p>
                 </div>
               )}
+              
+              <div className="mt-4 pt-4 border-t">
+                <h4 className="text-sm font-medium mb-2">Important for Reliable Notifications</h4>
+                <div className="text-xs text-muted-foreground space-y-2">
+                  <p>
+                    Please disable battery optimization or background restrictions for this app in your device settings to ensure you receive task reminders on time, even when the app is not in use.
+                  </p>
+                  <p className="font-medium">How to do this:</p>
+                  <p>
+                    Go to your device's Settings &gt; Apps &gt; [Remind itt] &gt; Battery/Background settings.
+                    Select "Allow background activity" or "Don't optimize".
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -211,15 +345,17 @@ const Settings = () => {
             <CardDescription>Configure how far ahead recurring tasks are generated</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="daily-recurrence">Daily Tasks (days)</Label>
                 <Input
                   id="daily-recurrence"
                   type="number"
-                  min="1"
+                  min="0"
+                  inputMode="numeric"
                   value={recurrenceValues.daily}
                   onChange={(e) => handleRecurrenceChange('daily', e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -227,9 +363,11 @@ const Settings = () => {
                 <Input
                   id="weekly-recurrence"
                   type="number"
-                  min="1"
+                  min="0"
+                  inputMode="numeric"
                   value={recurrenceValues.weekly}
                   onChange={(e) => handleRecurrenceChange('weekly', e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -237,9 +375,11 @@ const Settings = () => {
                 <Input
                   id="monthly-recurrence"
                   type="number"
-                  min="1"
+                  min="0"
+                  inputMode="numeric"
                   value={recurrenceValues.monthly}
                   onChange={(e) => handleRecurrenceChange('monthly', e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -247,9 +387,11 @@ const Settings = () => {
                 <Input
                   id="yearly-recurrence"
                   type="number"
-                  min="1"
+                  min="0"
+                  inputMode="numeric"
                   value={recurrenceValues.yearly}
                   onChange={(e) => handleRecurrenceChange('yearly', e.target.value)}
+                  className="w-full"
                 />
               </div>
             </div>
@@ -276,18 +418,20 @@ const Settings = () => {
                 onClick={handleExportData}
                 variant="outline"
                 className="flex items-center gap-2"
+                disabled={isExporting}
               >
                 <Download size={16} />
-                Export Data
+                {isExporting ? 'Exporting...' : 'Export Data'}
               </Button>
               
               <Button 
                 onClick={handleImportClick}
                 variant="outline"
                 className="flex items-center gap-2"
+                disabled={isImporting}
               >
                 <Upload size={16} />
-                Import Data
+                {isImporting ? 'Importing...' : 'Import Data'}
               </Button>
               <input 
                 type="file" 
@@ -307,28 +451,13 @@ const Settings = () => {
               Delete All Data
             </Button>
             <p className="text-xs text-muted-foreground">
-              Export your data to save a backup, or import previously exported data.
-              Deleting all data will permanently remove all your tasks.
+              {Capacitor.isNativePlatform() 
+                ? 'Export your data to save a backup in your Documents folder. Import previously exported data from your device storage.'
+                : 'Export your data to save a backup, or import previously exported data.'}
+              <br />Deleting all data will permanently remove all your tasks.
             </p>
           </CardContent>
         </Card>
-        
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>Snooze Options</CardTitle>
-            <CardDescription>Configure reminder snooze durations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              <Button variant="outline" className="w-full">5 minutes</Button>
-              <Button variant="outline" className="w-full">10 minutes</Button>
-              <Button variant="outline" className="w-full">30 minutes</Button>
-            </div>
-            <p className="text-xs text-muted-foreground pt-2">
-              These are the default snooze durations for your reminders.
-            </p>
-          </CardContent>
-        </Card> */}
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

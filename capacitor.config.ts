@@ -40,6 +40,9 @@ const config: CapacitorConfig = {
       hideStatusBar: false,
       webContentsDebuggingEnabled: true,
     },
+    Filesystem: {
+      directory: "DATA",
+    },
   },
   android: {
     allowMixedContent: true,
@@ -47,6 +50,10 @@ const config: CapacitorConfig = {
     backgroundColor: "#ffffff",
     captureInput: true,
     useLegacyBridge: false,
+    permissions: [
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.READ_EXTERNAL_STORAGE",
+    ],
   },
 };
 

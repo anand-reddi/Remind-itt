@@ -16,6 +16,7 @@ import AddTask from "./pages/AddTask";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Capacitor } from '@capacitor/core';
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,31 @@ if (Capacitor.getPlatform() === 'web' && 'serviceWorker' in navigator) {
   });
 }
 
+const AppContent = () => {
+  useEffect(() => {
+    // Force a repaint to ensure theme is applied correctly
+    document.body.style.display = 'none';
+    setTimeout(() => {
+      document.body.style.display = '';
+    }, 10);
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Index />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/recent" element={<Recent />} />
+          <Route path="/add" element={<AddTask />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -50,18 +76,7 @@ const App = () => (
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route element={<Layout />}>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/calendar" element={<Calendar />} />
-                      <Route path="/recent" element={<Recent />} />
-                      <Route path="/add" element={<AddTask />} />
-                      <Route path="/settings" element={<Settings />} />
-                    </Route>
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
+                <AppContent />
               </TooltipProvider>
             </NotificationProvider>
           </QuoteProvider>

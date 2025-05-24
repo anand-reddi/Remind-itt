@@ -30,9 +30,29 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (savedSettings) {
       try {
         const parsedSettings = JSON.parse(savedSettings);
+        
+        // Ensure all values are valid numbers and at least 1
+        const validatedSettings: Partial<RecurrenceDefaults> = {};
+        
+        if (typeof parsedSettings.daily === 'number' && !isNaN(parsedSettings.daily) && parsedSettings.daily >= 1) {
+          validatedSettings.daily = parsedSettings.daily;
+        }
+        
+        if (typeof parsedSettings.weekly === 'number' && !isNaN(parsedSettings.weekly) && parsedSettings.weekly >= 1) {
+          validatedSettings.weekly = parsedSettings.weekly;
+        }
+        
+        if (typeof parsedSettings.monthly === 'number' && !isNaN(parsedSettings.monthly) && parsedSettings.monthly >= 1) {
+          validatedSettings.monthly = parsedSettings.monthly;
+        }
+        
+        if (typeof parsedSettings.yearly === 'number' && !isNaN(parsedSettings.yearly) && parsedSettings.yearly >= 1) {
+          validatedSettings.yearly = parsedSettings.yearly;
+        }
+        
         setRecurrenceDefaults({
           ...defaultRecurrenceDefaults,
-          ...parsedSettings
+          ...validatedSettings
         });
       } catch (e) {
         console.error('Failed to parse saved recurrence defaults', e);
@@ -46,9 +66,28 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [recurrenceDefaults]);
 
   const updateRecurrenceDefaults = (newDefaults: Partial<RecurrenceDefaults>) => {
+    // Validate that all values are at least 1
+    const validatedDefaults: Partial<RecurrenceDefaults> = {};
+    
+    if (newDefaults.daily !== undefined) {
+      validatedDefaults.daily = Math.max(1, newDefaults.daily);
+    }
+    
+    if (newDefaults.weekly !== undefined) {
+      validatedDefaults.weekly = Math.max(1, newDefaults.weekly);
+    }
+    
+    if (newDefaults.monthly !== undefined) {
+      validatedDefaults.monthly = Math.max(1, newDefaults.monthly);
+    }
+    
+    if (newDefaults.yearly !== undefined) {
+      validatedDefaults.yearly = Math.max(1, newDefaults.yearly);
+    }
+    
     setRecurrenceDefaults(prev => ({
       ...prev,
-      ...newDefaults
+      ...validatedDefaults
     }));
   };
 

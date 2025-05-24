@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent flash of unstyled content */
+html {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+html.theme-loading {
+  visibility: hidden;
+  opacity: 0;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

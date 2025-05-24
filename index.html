@@ -1,16 +1,46 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-loading">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="description" content="Manage your reminders easily!" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Playfair+Display:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
     <title>Remind itt</title>
+    <script>
+      // Apply theme immediately to prevent flash
+      (function () {
+        try {
+          const savedTheme = localStorage.getItem("theme");
+          if (savedTheme === "dark") {
+            document.documentElement.classList.add("dark");
+          } else if (savedTheme === "light") {
+            document.documentElement.classList.remove("dark");
+          } else {
+            // Default to dark theme
+            document.documentElement.classList.add("dark");
+          }
+
+          // Set background color based on theme to prevent flash
+          document.documentElement.style.backgroundColor =
+            savedTheme === "light" ? "#ffffff" : "#121212";
+
+          // Remove loading class after a short delay to ensure styles are applied
+          setTimeout(function () {
+            document.documentElement.classList.remove("theme-loading");
+          }, 50);
+        } catch (e) {
+          console.error("Error applying initial theme:", e);
+          document.documentElement.classList.remove("theme-loading");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
