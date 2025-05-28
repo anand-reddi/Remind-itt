@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { requestStoragePermission, checkStoragePermission } from '@/lib/permissions';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
 
 // Define the type for recurrence values that can be either number or empty string
 type RecurrenceValue = number | '';
@@ -124,6 +126,21 @@ const Settings = () => {
     
     try {
       setIsExporting(true);
+      
+      if (Capacitor.isNativePlatform()) {
+        // First check if we have permission
+        const hasPermission = await checkStoragePermission();
+        
+        if (!hasPermission) {
+          // Request permission if we don't have it
+          const granted = await requestStoragePermission();
+          if (!granted) {
+            setIsExporting(false);
+            return;
+          }
+        }
+      }
+      
       toast.info('Preparing data for export...');
       
       const data = exportTasks();
@@ -131,12 +148,6 @@ const Settings = () => {
       
       if (Capacitor.isNativePlatform()) {
         try {
-          // Request permissions first on Android
-          if (Capacitor.getPlatform() === 'android') {
-            await Filesystem.requestPermissions();
-          }
-          
-          // Write file to downloads directory
           await Filesystem.writeFile({
             path: fileName,
             data: data,
@@ -147,12 +158,9 @@ const Settings = () => {
           toast.success('Data exported successfully to Documents folder');
         } catch (error) {
           console.error('Error exporting data to filesystem:', error);
-          
-          // Fallback to browser download if filesystem fails
           downloadBrowserFile(data, fileName);
         }
       } else {
-        // Web platform - use browser download
         downloadBrowserFile(data, fileName);
       }
     } catch (error) {
@@ -177,10 +185,20 @@ const Settings = () => {
     toast.success('Data exported successfully');
   };
 
-  const handleImportClick = () => {
+  const handleImportClick = async () => {
     if (isImporting) return;
     
     if (Capacitor.isNativePlatform()) {
+      // First check if we have permission
+      const hasPermission = await checkStoragePermission();
+      
+      if (!hasPermission) {
+        // Request permission if we don't have it
+        const granted = await requestStoragePermission();
+        if (!granted) {
+          return;
+        }
+      }
       importNativeFile();
     } else if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -192,38 +210,46 @@ const Settings = () => {
       setIsImporting(true);
       toast.info('Selecting file to import...');
       
-      // Request permissions first on Android
-      if (Capacitor.getPlatform() === 'android') {
-        await Filesystem.requestPermissions();
+      try {
+        // Use FilePicker plugin to pick files
+        const result = await FilePicker.pickFiles({
+          readData: true,
+          types: ['application/json']
+        });
+        
+        if (result.files && result.files.length > 0) {
+          const file = result.files[0];
+          let jsonData;
+          
+          if (file.data) {
+            // Data is available directly from the plugin
+            jsonData = atob(file.data);
+          } else if (file.path) {
+            // Native platforms - read file from path
+            const fileContent = await Filesystem.readFile({
+              path: file.path,
+              encoding: Encoding.UTF8
+            });
+            jsonData = fileContent.data;
+          }
+          
+          const success = importTasks(jsonData);
+          if (success) {
+            toast.success('Data imported successfully');
+          } else {
+            toast.error('Invalid data format');
+          }
+        } else {
+          toast.error('No file selected');
+        }
+      } catch (error) {
+        console.error('Error reading file:', error);
+        toast.error('Failed to import file. Please make sure you select a valid JSON file.');
       }
-      
-      // Use capacitor-file-picker plugin or similar here
-      // Since we don't have that installed, we'll show a toast explaining the limitation
-      toast.error('To import on mobile, please install from a backup file in your Documents folder');
-      setIsImporting(false);
-      
-      // If we had the file picker plugin, we would do something like:
-      // const result = await FilePicker.pickFiles({
-      //   types: ['application/json'],
-      //   multiple: false
-      // });
-      // 
-      // if (result.files.length > 0) {
-      //   const fileContent = await Filesystem.readFile({
-      //     path: result.files[0].path,
-      //     encoding: Encoding.UTF8
-      //   });
-      //   
-      //   const success = importTasks(fileContent.data);
-      //   if (success) {
-      //     toast.success('Data imported successfully');
-      //   } else {
-      //     toast.error('Invalid data format');
-      //   }
-      // }
     } catch (error) {
       console.error('Error importing data:', error);
       toast.error('Failed to import data');
+    } finally {
       setIsImporting(false);
     }
   };
@@ -451,9 +477,7 @@ const Settings = () => {
               Delete All Data
             </Button>
             <p className="text-xs text-muted-foreground">
-              {Capacitor.isNativePlatform() 
-                ? 'Export your data to save a backup in your Documents folder. Import previously exported data from your device storage.'
-                : 'Export your data to save a backup, or import previously exported data.'}
+              'Export your data to save a backup, or import previously exported data.'
               <br />Deleting all data will permanently remove all your tasks.
             </p>
           </CardContent>

@@ -11,7 +11,8 @@ export function Layout() {
   
   useEffect(() => {
     // Ensure the body background matches the theme to prevent flashing
-    document.body.style.backgroundColor = theme === 'dark' ? '#121212' : '#ffffff';
+    // Use the exact same color as defined in the CSS for dark mode
+    document.body.style.backgroundColor = theme === 'dark' ? 'hsl(0, 0%, 0%)' : '#ffffff';
   }, [theme]);
 
   return (
@@ -21,8 +22,8 @@ export function Layout() {
         <div className="hidden md:block w-64 shrink-0">
           <Sidebar />
         </div>
-        <ScrollArea className="flex-1 h-full pb-16 md:pb-0">
-          <div className="px-3 py-4 md:container md:py-8">
+        <ScrollArea className="flex-1 h-full pb-16 md:pb-0 scroll-area">
+          <div className="px-3 py-4 md:container md:py-8 min-h-[calc(100vh-4rem)]">
             <Outlet />
           </div>
         </ScrollArea>

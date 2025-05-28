@@ -28,8 +28,13 @@
           }
 
           // Set background color based on theme to prevent flash
+          // Use pure black for dark mode to match the navigation bar
           document.documentElement.style.backgroundColor =
-            savedTheme === "light" ? "#ffffff" : "#121212";
+            savedTheme === "light" ? "#ffffff" : "#000000";
+
+          // Also set body background color
+          document.body.style.backgroundColor =
+            savedTheme === "light" ? "#ffffff" : "#000000";
 
           // Remove loading class after a short delay to ensure styles are applied
           setTimeout(function () {

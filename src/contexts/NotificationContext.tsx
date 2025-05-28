@@ -51,6 +51,22 @@ interface StoredNotification {
   scheduleTime?: number; // Store schedule time as timestamp
 }
 
+const TOAST_STYLE = {
+  position: "top" as const,
+  duration: "long" as const,
+  style: {
+    marginTop: "80px" // Increased margin to avoid any overlaps
+  }
+};
+
+// Define notification icons based on priority
+const NOTIFICATION_ICONS = {
+  High: 'ic_notification_high',
+  Medium: 'ic_notification_medium',
+  Low: 'ic_notification_low',
+  default: 'ic_notification_default'
+};
+
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const { getTodaysTasks } = useTasks();
@@ -521,13 +537,13 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           title,
           body,
           id: notificationId,
-          sound: useSound ? 'default' : null, // Always use 'default' instead of undefined
-          smallIcon: 'ic_stat_remind_itt',
-          iconColor: '#4f46e5',
+          sound: useSound ? 'default' : null,
+          smallIcon: NOTIFICATION_ICONS[priority] || NOTIFICATION_ICONS.default,
+          largeIcon: NOTIFICATION_ICONS[priority] || NOTIFICATION_ICONS.default,
+          iconColor: priority === 'High' ? '#ef4444' : priority === 'Medium' ? '#f59e0b' : '#3b82f6',
           channelId: CHANNEL_ID,
           ongoing: isSticky,
           autoCancel: !isSticky,
-          // Add extra data to ensure sound works
           extra: {
             ensureSound: useSound
           }
@@ -573,8 +589,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                   body,
                   id: notificationId,
                   sound: useSound ? 'default' : null,
-                  smallIcon: 'ic_stat_remind_itt',
-                  iconColor: '#4f46e5',
+                  smallIcon: NOTIFICATION_ICONS[priority] || NOTIFICATION_ICONS.default,
+                  largeIcon: NOTIFICATION_ICONS[priority] || NOTIFICATION_ICONS.default,
+                  iconColor: priority === 'High' ? '#ef4444' : priority === 'Medium' ? '#f59e0b' : '#3b82f6',
                   channelId: CHANNEL_ID,
                   ongoing: isSticky,
                   autoCancel: !isSticky,
@@ -784,8 +801,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                   repeats: false,
                 },
                 sound: 'default', // Always use default sound
-                smallIcon: 'ic_stat_remind_itt',
-                iconColor: '#4f46e5',
+                smallIcon: NOTIFICATION_ICONS[task.priority] || NOTIFICATION_ICONS.default,
+                largeIcon: NOTIFICATION_ICONS[task.priority] || NOTIFICATION_ICONS.default,
+                iconColor: task.priority === 'High' ? '#ef4444' : task.priority === 'Medium' ? '#f59e0b' : '#3b82f6',
                 channelId: CHANNEL_ID,
                 ongoing: isSticky,
                 autoCancel: !isSticky,

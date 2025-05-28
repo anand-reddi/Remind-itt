@@ -210,3 +210,41 @@ input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--ring));
 }
+
+/* Keyboard handling */
+.ion-page {
+  height: 100vh;
+  height: -webkit-fill-available;
+}
+
+body.keyboard-is-open {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+body.keyboard-is-open .fixed.bottom-0 {
+  display: none !important;
+}
+
+input,
+textarea {
+  font-size: 16px !important; /* Prevents iOS zoom */
+}
+
+/* Adjust content when keyboard is open */
+body.keyboard-is-open .scroll-area {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Prevent content shift on keyboard open */
+@supports (-webkit-touch-callout: none) {
+  .scroll-area {
+    height: -webkit-fill-available;
+  }
+
+  body.keyboard-is-open .scroll-area {
+    height: 100%;
+  }
+}

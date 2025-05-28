@@ -43,6 +43,12 @@ const config: CapacitorConfig = {
     Filesystem: {
       directory: "DATA",
     },
+    Keyboard: {
+      resize: "body",
+      style: "DARK",
+      resizeOnFullScreen: true,
+      androidResizeMode: "body",
+    },
   },
   android: {
     allowMixedContent: true,
@@ -50,10 +56,7 @@ const config: CapacitorConfig = {
     backgroundColor: "#ffffff",
     captureInput: true,
     useLegacyBridge: false,
-    permissions: [
-      "android.permission.WRITE_EXTERNAL_STORAGE",
-      "android.permission.READ_EXTERNAL_STORAGE",
-    ],
+    initialFocus: true,
   },
 };
 

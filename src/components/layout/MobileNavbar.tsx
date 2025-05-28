@@ -2,56 +2,83 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, CalendarDays, Plus, Settings, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 
 export function MobileNavbar() {
   const location = useLocation();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   
-  // Detect keyboard visibility
   useEffect(() => {
-    // Initial window height
-    const initialWindowHeight = window.innerHeight;
-    let lastWindowHeight = initialWindowHeight;
-    
-    const handleResize = () => {
-      // If window height decreases significantly, keyboard is likely open
-      const currentWindowHeight = window.innerHeight;
-      const heightDifference = Math.abs(initialWindowHeight - currentWindowHeight);
+    if (Capacitor.isNativePlatform()) {
+      // Use Capacitor Keyboard API for native platforms
+      let showListener: any;
+      let hideListener: any;
       
-      // Consider keyboard open if height decreases by more than 15%
-      if (currentWindowHeight < lastWindowHeight && heightDifference > initialWindowHeight * 0.15) {
-        setIsKeyboardVisible(true);
-      } else {
-        setIsKeyboardVisible(false);
-      }
+      const setupListeners = async () => {
+        showListener = await Keyboard.addListener('keyboardWillShow', () => {
+          setIsKeyboardVisible(true);
+        });
+        
+        hideListener = await Keyboard.addListener('keyboardWillHide', () => {
+          setIsKeyboardVisible(false);
+        });
+      };
       
-      lastWindowHeight = currentWindowHeight;
-    };
-    
-    // Also check for focus events on input elements
-    const handleFocus = (e: FocusEvent) => {
-      if (e.target instanceof HTMLInputElement || 
-          e.target instanceof HTMLTextAreaElement || 
-          e.target instanceof HTMLSelectElement) {
-        setIsKeyboardVisible(true);
-      }
-    };
-    
-    const handleBlur = () => {
-      setIsKeyboardVisible(false);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    document.addEventListener('focusin', handleFocus);
-    document.addEventListener('focusout', handleBlur);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('focusin', handleFocus);
-      document.removeEventListener('focusout', handleBlur);
-    };
+      setupListeners();
+      
+      return () => {
+        showListener?.remove();
+        hideListener?.remove();
+      };
+    } else {
+      // Fallback for web browsers
+      const initialWindowHeight = window.innerHeight;
+      let lastWindowHeight = initialWindowHeight;
+      
+      const handleResize = () => {
+        const currentWindowHeight = window.innerHeight;
+        const heightDifference = Math.abs(initialWindowHeight - currentWindowHeight);
+        
+        if (currentWindowHeight < lastWindowHeight && heightDifference > initialWindowHeight * 0.15) {
+          setIsKeyboardVisible(true);
+        } else {
+          setIsKeyboardVisible(false);
+        }
+        
+        lastWindowHeight = currentWindowHeight;
+      };
+      
+      const handleFocus = (e: FocusEvent) => {
+        if (e.target instanceof HTMLInputElement || 
+            e.target instanceof HTMLTextAreaElement || 
+            e.target instanceof HTMLSelectElement) {
+          setIsKeyboardVisible(true);
+        }
+      };
+      
+      const handleBlur = () => {
+        requestAnimationFrame(() => {
+          if (!(document.activeElement instanceof HTMLInputElement || 
+              document.activeElement instanceof HTMLTextAreaElement || 
+              document.activeElement instanceof HTMLSelectElement)) {
+            setIsKeyboardVisible(false);
+          }
+        });
+      };
+      
+      window.addEventListener('resize', handleResize);
+      document.addEventListener('focusin', handleFocus);
+      document.addEventListener('focusout', handleBlur);
+      
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        document.removeEventListener('focusin', handleFocus);
+        document.removeEventListener('focusout', handleBlur);
+      };
+    }
   }, []);
-  
+
   const isActive = (path: string) => {
     return location.pathname === path;
   };

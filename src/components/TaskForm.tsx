@@ -167,6 +167,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
             value={title} 
             onChange={(e) => setTitle(e.target.value)} 
             required 
+            autoComplete="on"
+            autoCapitalize="sentences"
+            spellCheck="true"
+            enterKeyHint="next"
           />
         </div>
 
@@ -177,6 +181,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, editTask }) => {
             placeholder="Enter task description" 
             value={description} 
             onChange={(e) => setDescription(e.target.value)} 
+            autoComplete="on"
+            autoCapitalize="sentences"
+            spellCheck="true"
+            enterKeyHint="done"
+            rows={3}
           />
         </div>
 

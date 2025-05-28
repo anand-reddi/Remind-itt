@@ -5,9 +5,29 @@
 >
 
     <!-- Permissions -->
-    <!-- <uses-permission android:name="android.permission.INTERNET" /> -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    
+    <!-- Storage permissions for Android 13+ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    
+    <!-- Storage permissions for Android 12 and below -->
+    <uses-permission
+    android:name="android.permission.READ_EXTERNAL_STORAGE"
+    android:maxSdkVersion="32"
+  />
+    <uses-permission
+    android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    android:maxSdkVersion="32"
+  />
+    
+    <!-- Manage storage permission for all Android versions -->
+    <uses-permission
+    android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+  />
 
     <application
     android:allowBackup="true"
@@ -16,7 +36,26 @@
     android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
     android:theme="@style/AppTheme"
+    android:requestLegacyExternalStorage="true"
   >
+
+        <!-- Notification Icons -->
+        <meta-data
+      android:name="com.getcapacitor.notification.icon"
+      android:resource="@drawable/ic_notification_default"
+    />
+        <meta-data
+      android:name="com.getcapacitor.notification.icon.high"
+      android:resource="@drawable/ic_notification_high"
+    />
+        <meta-data
+      android:name="com.getcapacitor.notification.icon.medium"
+      android:resource="@drawable/ic_notification_medium"
+    />
+        <meta-data
+      android:name="com.getcapacitor.notification.icon.low"
+      android:resource="@drawable/ic_notification_low"
+    />
 
         <!-- Capacitor Notification Receiver -->
         <receiver
@@ -30,6 +69,7 @@
       android:label="@string/title_activity_main"
       android:theme="@style/AppTheme.NoActionBarLaunch"
       android:launchMode="singleTask"
+      android:windowSoftInputMode="adjustResize"
       android:exported="true"
     >
             <intent-filter>
