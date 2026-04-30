@@ -1,42 +1,68 @@
+## Remind itt
 
+Remind itt is a task + reminder app built with React. It includes a dashboard view, a calendar view, recent tasks, and settings, and is set up to run as a PWA on the web and as a Capacitor app for Android.
 
-Follow these steps:
+## Features
+
+- **Task management**: create tasks with common fields (priority/category/date-based workflows).
+- **Calendar view**: browse tasks by date.
+- **Recent view**: quickly find recently created/updated tasks.
+- **Reminders & notifications**: supports local notifications (Capacitor plugin).
+- **PWA support**: service worker registration on web builds.
+- **Settings & theming**: app settings and theme support.
+
+## Tech stack
+
+- **Vite** + **React** + **TypeScript**
+- **Tailwind CSS** + **shadcn/ui** (Radix UI)
+- **TanStack Query**
+- **Capacitor** (Android + native plugins)
+
+## Getting started (web)
+
+### Prerequisites
+
+- **Node.js** (recommended: recent LTS)
+
+### Install & run
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Useful scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+npm run preview
+npm run lint
+```
 
-**Use GitHub Codespaces**
+## Project structure (high level)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `src/pages/`: route-level pages (Dashboard, Calendar, Recent, Add Task, Settings)
+- `src/components/`: UI and app components (task cards, forms, layout)
+- `src/contexts/`: app state providers (tasks, notifications, settings, theme)
+- `public/`: PWA/service worker assets
 
-## What technologies are used for this project?
+## PWA notes
 
-This project is built with:
+The app registers `public/service-worker.js` **only on the web platform**.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Mobile (Capacitor / Android)
 
+This repo includes a `capacitor.config.ts` and an `android/` project for Android builds.
+
+- If you are forking/rebranding, update the **app id** and **app name** in `capacitor.config.ts` before shipping.
+
+## Deployment (Firebase Hosting)
+
+`firebase.json` is configured to host the `dist/` folder and rewrite all routes to `index.html` (SPA routing).
+
+Typical flow:
+
+```sh
+npm run build
+# then deploy with your Firebase project configuration
+```
