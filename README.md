@@ -11,7 +11,7 @@ Remind itt is a task + reminder app built with React. It includes a dashboard vi
 - **PWA support**: service worker registration on web builds.
 - **Settings & theming**: app settings and theme support.
 
-## Tech stack
+## Tech stackk
 
 - **Vite** + **React** + **TypeScript**
 - **Tailwind CSS** + **shadcn/ui** (Radix UI)
@@ -46,7 +46,7 @@ npm run lint
 - `src/contexts/`: app state providers (tasks, notifications, settings, theme)
 - `public/`: PWA/service worker assets
 
-## PWA notes
+## PWA notess
 
 The app registers `public/service-worker.js` **only on the web platform**.
 
