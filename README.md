@@ -2,7 +2,7 @@
 
 Remind itt is a task + reminder app built with React. It includes a dashboard view, a calendar view, recent tasks, and settings, and is set up to run as a PWA on the web and as a Capacitorr app for Android.
 
-## Features
+## Featuress
 
 - **Task management**: create tasks with common fields (priority/category/date-based workflows).
 - **Calendar view**: browse tasks by date.
@@ -11,7 +11,7 @@ Remind itt is a task + reminder app built with React. It includes a dashboard vi
 - **PWA support**: service worker registration on web builds.
 - **Settings & theming**: app settings and theme support.
 
-## Tech stack
+## Tech stackk
 
 - **Vite** + **React** + **TypeScript**
 - **Tailwind CSS** + **shadcn/ui** (Radix UI)
@@ -24,14 +24,14 @@ Remind itt is a task + reminder app built with React. It includes a dashboard vi
 
 - **Node.js** (recommended: recent LTS)
 
-### Install & run
+### Install & runn
 
 ```sh
 npm install
 npm run dev
 ```
 
-### Useful scripts
+### Useful scriptss
 
 ```sh
 npm run build
