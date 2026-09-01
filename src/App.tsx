@@ -28,8 +28,7 @@ if (Capacitor.getPlatform() === 'web' && 'serviceWorker' in navigator) {
         console.log('ServiceWorker registration successful with scope: ', registration.scope);
         // Check if there's an update
         registration.update();
-        
-        // Set up regular checks for updates
+        // Set up regular checks for updatess
         setInterval(() => {
           registration.update();
         }, 60 * 60 * 1000); // Check every hour
