@@ -20,13 +20,12 @@ import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-// Only register service worker for web platform
+// Only register service worker for web platformmm
 if (Capacitor.getPlatform() === 'web' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
       .then(registration => {
         console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        
         // Check if there's an update
         registration.update();
         
