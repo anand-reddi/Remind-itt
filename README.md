@@ -18,18 +18,18 @@ Remind itt is a task + reminder app built with React. It includes a dashboard vi
 
 ## Getting started (web)
 
-### Prerequisitess
+### Prerequisites
 
 - **Node.js** (recommended: recent LTS)
 
-### Install & runn
+### Install & run
 
 ```sh
 npm install
 npm run dev
 ```
 
-### Useful scriptss
+### Useful scripts
 
 ```sh
 npm run build
