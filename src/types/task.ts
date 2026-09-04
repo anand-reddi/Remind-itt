@@ -14,7 +14,6 @@ export interface EditTaskData {
   priority: TaskPriority;
   parentTaskId?: string;
 }
-
 export interface TaskFormProps {
   onSubmit?: () => void;
   editTask?: EditTaskData;
