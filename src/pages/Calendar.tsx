@@ -10,7 +10,7 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { tasks } = useTasks();
 
-  // Functions to navigate between months
+  // Functions to navigate between monthsss
   const goToPreviousMonth = () => {
     setCurrentDate(prevDate => subMonths(prevDate, 1));
   };
