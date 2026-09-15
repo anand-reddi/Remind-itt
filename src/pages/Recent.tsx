@@ -17,7 +17,6 @@ const Recent = () => {
   const [filterType, setFilterType] = useState<'category' | 'priority'>('category');
   const [filterValue, setFilterValue] = useState<FilterOption>('all');
   const [taskMode, setTaskMode] = useState<TaskMode>('saved');
-  
   const today = new Date();
   
   // Different date ranges based on task mode
@@ -55,7 +54,6 @@ const Recent = () => {
   // Filter tasks based on selected filter
   const filteredTasks = modeTasks.filter((task) => {
     if (filterValue === 'all') return true;
-    
     if (filterType === 'category') {
       return task.category === filterValue;
     } else if (filterType === 'priority') {
