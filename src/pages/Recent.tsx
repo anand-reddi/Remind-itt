@@ -59,7 +59,6 @@ const Recent = () => {
     } else if (filterType === 'priority') {
       return task.priority === filterValue;
     }
-    
     return true;
   });
 
